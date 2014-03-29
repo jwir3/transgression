@@ -17,7 +17,7 @@ setup(name=progName,
       author=progAuthor,
       author_email=progEmail,
       url=progUrl,
-      packages=['transgression', 'prettylogger'],
+      packages=['transgression'],
       entry_points=entry_points,
       install_requires=['argparse', 'ansicolors', 'httplib2', 'mozfile',
                         'mozprofile', 'mozrunner', 'BeautifulSoup']
