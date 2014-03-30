@@ -14,16 +14,32 @@ import time
 from xml.dom.minidom import parseString
 from xml.dom.minidom import getDOMImplementation
 
+class Section:
+  def __init__(self, aName, aConfigXMLElement):
+    self.mName = aName
+    self.mElement = aConfigXMLElement
+
+  def __str__(self):
+    return "Section: <" + self.mName + ">"
+
+  def getName(self):
+    return self.mName
+
+  def addOption(self):
+    pass
+
+  def addSubSecton(self, aSubSectionName):
+    pass
+
 # An object representing a config file with the following XML structure:
 #
 # <Configuration>
-#   <Options>
-#     <option name="...">...</option>
-#   </Options>
+#   <SectionName>
+#     <option name="...">value</option>
+#   </SectionName>
 # </Configuration>
-
 class Configurator:
-  # ================== PUBLIC FUNCTIONS ==================
+  # === [ Public API ] =========================================================
 
   def isWindows(self):
     if os.name == 'nt':
@@ -72,7 +88,13 @@ class Configurator:
       self.writeDocumentToConfigFile()
 
   def __init__(self, aConfigFilePath, aGlobal=False):
+    # Some member variable declarations so we don't forget to init them.
+    self.mConfigDocument = None
+    self.mConfigFilePath = None
+    self.mConfigDirPath = None
     self.mIsGlobal = aGlobal
+    self.mTopLevelSections = []
+
     if (self.mIsGlobal):
       self.mConfigFilePath = aConfigFilePath
     else:
@@ -83,10 +105,35 @@ class Configurator:
     print("Searching for config file at: " + self.mConfigFilePath)
     self.ensureConfigFileCreated(self.mConfigFilePath)
 
+  def addSectionToConfig(self, aSectionName, aSectionParentName='Configuration'):
+   document = self.getDocument()
+   allElementsWithParentName = document.getElementsByTagName(aSectionParentName)
+
+   for element in allElementsWithParentName:
+     childrenWithTag = element.getElementsByTagName(aSectionName)
+     if childrenWithTag.length > 0:
+       # Cowardly refuse to add another duplicate child element
+       continue
+
+     newSectionElement = document.createElement(aSectionName)
+     element.appendChild(newSectionElement)
+
+   self.writeDocumentToConfigFile()
+
+  def getTopLevelSections(self):
+    return self.mTopLevelSections
+
   # === [ Private API ] =======================================================
+
+  def populateTopLevelSections(self):
+    rootElement = self.mConfigDocument.documentElement
+    for child in rootElement.childNodes:
+      childSection = Section(child.tagName, child)
+      self.mTopLevelSections.append(childSection)
+
   def getDocument(self):
     if not self.mConfigDocument:
-      configFile = getConfigFile()
+      configFile = self.getConfigFile()
       configFileHandle = open(configFile, 'r')
 
       # Strip all newlines
@@ -94,6 +141,7 @@ class Configurator:
 
       configFileHandle.close()
       self.mConfigDocument = parseString(documentXml)
+      self.populateTopLevelSections()
 
     return self.mConfigDocument
 
@@ -112,21 +160,9 @@ class Configurator:
 
 ## =============== USER INTERFACE SECTION ===============
 
-  def getConfigDirectory(self, aConfigFilePath):
-    self.mConfigDirPath = os.path.dirname(aConfigFilePath)
-    return self.mConfigDirPath
-
   def getConfigFile(self):
-    if not os.path.exists(self.mConfigFilePath):
-      if not self.mConfigDirPath:
-        getConfigDirectory(self.mConfigFilePath)
-
-#      configDirPath = checkAndCreateConfigDir();
-#      gConfigFilePath = os.path.join(configDirPath, 'jmoztools.conf');
-#      if not os.path.isfile(gConfigFilePath) :
-#        createEmptyConfigFile(gConfigFilePath)
-#
-#    return gConfigFilePath;
+    self.ensureConfigFileCreated(self.mConfigFilePath)
+    return self.mConfigFilePath
 
 #def getMainElement():
 #    global gMainElement
@@ -504,22 +540,6 @@ class Configurator:
 #    
 #    writeDocumentToConfigFile()
 #    
-#    return
-#
-#def createNewOptionsSection():
-#    document = getDocument()
-#        
-#    optionsElement = document.createElement('Options')
-#    defaultProjectElement = document.createElement('DefaultProject');
-#    defaultProjectElement.setAttribute('name', '')
-#    optionsElement.appendChild(defaultProjectElement)
-#    
-#    lastProjectElement = document.createElement('LastProject')
-#    lastProjectElement.setAttribute('name', '')
-#    optionsElement.appendChild(lastProjectElement)
-#    
-#    mainElement = document.getElementsByTagName('JMozTools')[0]
-#    mainElement.appendChild(optionsElement)
 #    return
 #
 #def setDocumentGlobal(document):
