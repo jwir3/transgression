@@ -14,6 +14,14 @@ import time
 from xml.dom.minidom import parseString
 from xml.dom.minidom import getDOMImplementation
 
+# An object representing a config file with the following XML structure:
+#
+# <Configuration>
+#   <Options>
+#     <option name="...">...</option>
+#   </Options>
+# </Configuration>
+
 class Configurator:
   # ================== PUBLIC FUNCTIONS ==================
 
@@ -40,10 +48,28 @@ class Configurator:
     return False
 
   def ensureConfigDirCreated(self, aConfigFilePath):
-    pass
+    # TODO: If we intend to support msys at some later date, we should re-enable
+    #       this old code from JMozTools
+    #if isMsys():
+    #    # If we're on msys, then the config dir path
+    #    # should be C:\Users\<user>\...
+    #    appData = os.environ['APPDATA']
+    #    homeDir = os.path.split(appData)[0]
+    #    homeDir = os.path.split(homeDir)[0]
+    #    self.mConfigDirPath = os.path.join(homeDir, self.mConfigDirPath)
+
+    self.mConfigDirPath = os.path.dirname(aConfigFilePath)
+
+    if not os.path.exists(self.mConfigDirPath):
+        os.mkdir(self.mConfigDirPath);
 
   def ensureConfigFileCreated(self, aConfigFilePath):
-    pass
+    self.ensureConfigDirCreated(aConfigFilePath)
+    if not os.path.exists(self.mConfigFilePath):
+      domImpl = getDOMImplementation()
+      self.mConfigDocument = domImpl.createDocument('', 'Configuration', None)
+      #createNewOptionsSection()
+      self.writeDocumentToConfigFile()
 
   def __init__(self, aConfigFilePath, aGlobal=False):
     self.mIsGlobal = aGlobal
@@ -52,32 +78,12 @@ class Configurator:
     else:
       self.mConfigFilePath = os.path.join('~', aConfigFilePath)
 
+    self.mConfigFilePath = os.path.expanduser(self.mConfigFilePath)
+
     print("Searching for config file at: " + self.mConfigFilePath)
-    self.ensureConfigDirCreated(self.mConfigFilePath)
+    self.ensureConfigFileCreated(self.mConfigFilePath)
 
-
-#def createEmptyConfigFile(configFilePath):    
-#    domImpl = getDOMImplementation()
-#    setDocumentGlobal(domImpl.createDocument('', 'JMozTools', None))
-#    createNewOptionsSection()
-#    writeDocumentToConfigFile()
-#    
-#    return
-#
-#def checkAndCreateConfigDir() :
-#    configDirPath = os.path.expanduser(os.path.join('~', '.jmoztools'));
-#    if not os.path.exists(configDirPath) :
-#        os.mkdir(configDirPath);
-#    elif isMsys():
-#        # If we're on msys, then the config dir path
-#        # should be C:\Users\<user>\.jmoztools
-#        appData = os.environ['APPDATA']
-#        homeDir = os.path.split(appData)[0]
-#        homeDir = os.path.split(homeDir)[0]
-#        configDirPath = os.path.join(homeDir, '.jmoztools')
-#    return configDirPath;
-#
-## =============== USER INTERFACE SECTION ===============
+  # === [ Private API ] =======================================================
   def getDocument(self):
     if not self.mConfigDocument:
       configFile = getConfigFile()
@@ -90,6 +96,21 @@ class Configurator:
       self.mConfigDocument = parseString(documentXml)
 
     return self.mConfigDocument
+
+  def writeDocumentToConfigFile(self):
+    document = self.mConfigDocument
+    configFilePath = self.mConfigFilePath
+
+    documentXml = document.toxml()
+    documentXml = documentXml.replace("\n", "")
+    document = parseString(documentXml)
+    documentPrettyXml = document.toprettyxml()
+    basicConfigFile = open(configFilePath, 'w');
+    basicConfigFile.write(documentPrettyXml);
+    basicConfigFile.flush();
+    basicConfigFile.close();
+
+## =============== USER INTERFACE SECTION ===============
 
   def getConfigDirectory(self, aConfigFilePath):
     self.mConfigDirPath = os.path.dirname(aConfigFilePath)
@@ -522,18 +543,6 @@ class Configurator:
 #
 #    return
 #
-#def writeDocumentToConfigFile():
-#    document = getDocument()
-#    configFilePath = getConfigFile()
-#
-#    documentXml = document.toxml()
-#    documentXml = documentXml.replace("\n", "")
-#    document = parseString(documentXml)
-#    documentPrettyXml = document.toprettyxml()
-#    basicConfigFile = open(configFilePath, 'w');
-#    basicConfigFile.write(documentPrettyXml);
-#    basicConfigFile.flush();
-#    basicConfigFile.close();
 #    
 #
 #def promptForSourceDirectory(projName):
