@@ -11,7 +11,6 @@ def main():
 
   globalOptionsSection = config.getTopLevelSection('GlobalOptions')
   globalOptionsSection.setOption('debug', 'on')
-  globalOptionsSection.setOption('debug', 'off')
 
 if __name__ == '__main__':
   main()

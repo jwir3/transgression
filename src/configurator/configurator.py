@@ -17,6 +17,62 @@ from prettylogger import PrettyLogger
 
 gLogger = PrettyLogger(True, False, False)
 
+class Option:
+  """
+     An option within the configuration file. Has a Section as a parent.
+     Note that the value can be updated, but the name must remain the same once
+     created.
+  """
+  __mName = None
+  __mValue = None
+  __mParentSection = None
+  __mElement = None
+
+  def __init__(self, aName, aValue, aParentSection):
+    self.__mName = aName
+    self.__mValue = aValue
+    self.__mParentSection = aParentSection
+    if not self.findXMLElement():
+      self.addElementToDocument()
+
+  def getName(self):
+    return self.__mName
+
+  def getValue(self):
+    return self.__mValue
+
+  def setValue(self, aValue):
+    self.__mValue = aValue
+    self.updateXML()
+
+  def findXMLElement(self):
+    parentElement = self.__mParentSection.getElement()
+    for childNode in parentElement.childNodes:
+      if childNode.tagName == 'option' and childNode.getAttribute('name') == self.__mName:
+        self.__mElement = childNode
+
+    return self.__mElement
+
+  def updateXML(self):
+    newElement = self.createNewXMLElement()
+    self.__mElement.parentNode.replaceChild(newElement, self.__mElement)
+    self.__mElement = newElement
+    self.__mParentSection.triggerXMLUpdate()
+
+  def addElementToDocument(self):
+    newElement = self.createNewXMLElement()
+    self.__mElement = newElement
+    self.__mParentSection.getElement().appendChild(self.__mElement)
+    self.__mParentSection.triggerXMLUpdate()
+
+  def createNewXMLElement(self):
+    document = self.__mParentSection.getElement().ownerDocument
+    newElement = document.createElement('option')
+    newElement.setAttribute('name', self.__mName)
+    newValue = document.createTextNode(self.__mValue)
+    newElement.appendChild(newValue)
+    return newElement
+
 class Section:
   """
      A section within the configuration file. Sections can have options
@@ -25,17 +81,27 @@ class Section:
   __mName = None
   __mElement = None
   __mParentConfigurator = None
+  __mOptionsList = []
+  __mSubSectionList = []
 
   def __init__(self, aParentConfigurator, aName, aConfigXMLElement):
     self.__mName = aName
     self.__mElement = aConfigXMLElement
     self.__mParentConfigurator = aParentConfigurator
+    self.repopulateOptionsList()
+    self.repopulateSubSectionList()
 
   def __str__(self):
     return "Section: <" + self.__mName + ">"
 
+  def getConfigurator(self):
+    return self.__mParentConfigurator
+
   def getName(self):
     return self.__mName
+
+  def getElement(self):
+    return self.__mElement
 
   def setOption(self, aOptionName, aOptionValue):
     global gLogger
@@ -44,32 +110,83 @@ class Section:
     foundOption = False
 
     # First, make sure that the option doesn't already exist
-    for childNode in self.__mElement.childNodes:
-      if childNode.tagName == 'option':
-        if childNode.getAttribute('name')  == aOptionName:
-          foundOption = True
-          newOptionElement = self.createOptionElement(aOptionName, aOptionValue, document)
-          childNode.parentNode.replaceChild(newOptionElement, childNode)
-          madeChange = True
+    for option in self.__mOptionsList:
+      if option.getName() == aOptionName:
+        foundOption = True
+        gLogger.debug("Found option. Updating.")
+        if option.getValue() != aOptionValue:
+          option.setValue(aOptionValue)
+          break
 
     if not foundOption:
-      optionElement = self.createOptionElement(aOptionName, aOptionValue, document)
-      self.__mElement.appendChild(optionElement)
+      gLogger.debug("Didn't find option, so creating new one.")
+      self.createOption(aOptionName, aOptionValue)
       madeChange = True
 
     if madeChange:
       gLogger.debug("Made change, so outputting configuration file.")
-      self.__mParentConfigurator.writeDocumentToConfigFile()
+      self.triggerXMLUpdate()
 
-  def addSubSecton(self, aSubSectionName):
-    pass
+  def triggerXMLUpdate(self):
+    self.__mParentConfigurator.writeDocumentToConfigFile()
 
-  def createOptionElement(self, aOptionName, aOptionValue, aDocument):
-    optionElement = aDocument.createElement('option')
-    optionElement.setAttribute('name', aOptionName)
-    textNode = aDocument.createTextNode(aOptionValue)
-    optionElement.appendChild(textNode)
-    return optionElement
+  def addSubSection(self, aSubSectionName):
+    self.repopulateSubSectionList()
+
+    # Make sure we don't already have a subsection with this name
+    foundSection = False
+    for section in self.__mSubSectionList:
+      if section.getName() == aSubSectionName:
+        foundSection = True
+
+    if not foundSection:
+      # Create the new section XML element
+      document = self.__mElement.ownerDocument
+      sectionElement = document.createElement(aSubSectionName)
+      self.__mElement.appendChild(sectionElement)
+      newSection = Section(self.__mParentConfigurator, aSubSectionName, sectionElement)
+      self.triggerXMLUpdate()
+
+  def getOptionsList(self):
+    self.repopulateOptionsList()
+    return self.__mOptionsList
+
+  def getSubSections(self):
+    return self.__mSubSectionList
+
+  def repopulateSubSectionList(self):
+    self.__mSubSectionList = []
+    for childNode in self.__mElement.childNodes:
+      if childNode.tagName != 'option':
+        sectionName = childNode.tagName
+        newSection = Section(self.__mParentConfigurator, sectionName, childNode)
+        self.__mSubSectionList.append(newSection)
+
+  def repopulateOptionsList(self):
+    self.__mOptionsList = []
+    for childNode in self.__mElement.childNodes:
+      if childNode.tagName == 'option':
+        optionName = childNode.getAttribute('name')
+        optionValue = childNode.firstChild.data
+        newOption = Option(optionName, optionValue, self)
+        self.__mOptionsList.append(newOption)
+
+  def getOption(self, aOptionName):
+    for option in self.__mOptionsList:
+      if option.getName() == aOptionName:
+        return option
+    return None
+
+  def createOption(self, aOptionName, aOptionValue):
+    newOption = Option(aOptionName, aOptionValue, self)
+    self.__mOptionsList.append(newOption)
+
+  #def createOptionElement(self, aOptionName, aOptionValue, aDocument):
+  #  optionElement = aDocument.createElement('option')
+  #  optionElement.setAttribute('name', aOptionName)
+  #  textNode = aDocument.createTextNode(aOptionValue)
+  #  optionElement.appendChild(textNode)
+  #  return optionElement
 
 # An object representing a config file with the following XML structure:
 #
