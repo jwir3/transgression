@@ -13,6 +13,9 @@ import time
 
 from xml.dom.minidom import parseString
 from xml.dom.minidom import getDOMImplementation
+from prettylogger import PrettyLogger
+
+gLogger = PrettyLogger(True, False, False)
 
 class Section:
   """
@@ -35,6 +38,7 @@ class Section:
     return self.__mName
 
   def setOption(self, aOptionName, aOptionValue):
+    global gLogger
     document = self.__mElement.ownerDocument
     madeChange = False
     foundOption = False
@@ -54,6 +58,7 @@ class Section:
       madeChange = True
 
     if madeChange:
+      gLogger.debug("Made change, so outputting configuration file.")
       self.__mParentConfigurator.writeDocumentToConfigFile()
 
   def addSubSecton(self, aSubSectionName):
@@ -122,7 +127,10 @@ class Configurator:
       #createNewOptionsSection()
       self.writeDocumentToConfigFile()
 
-  def __init__(self, aConfigFilePath, aGlobal=False):
+  def __init__(self, aConfigFilePath, aGlobal=False, aDebugOutput=False):
+    global gLogger
+    if aDebugOutput:
+      gLogger = PrettyLogger(True, True, True)
     # Some member variable declarations so we don't forget to init them.
     self.mConfigDocument = None
     self.mConfigFilePath = None
@@ -137,7 +145,7 @@ class Configurator:
 
     self.mConfigFilePath = os.path.expanduser(self.mConfigFilePath)
 
-    print("Searching for config file at: " + self.mConfigFilePath)
+    gLogger.debug("Searching for config file at: " + self.mConfigFilePath)
     self.ensureConfigFileCreated(self.mConfigFilePath)
 
   def addSectionToConfig(self, aSectionName, aSectionParentName='Configuration'):
