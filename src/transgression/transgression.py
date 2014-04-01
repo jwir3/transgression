@@ -9,9 +9,9 @@ def main():
   config.addSectionToConfig('Targets')
   config.addSectionToConfig('Targets')
 
-  topLevelSections = config.getTopLevelSections()
-  for section in topLevelSections:
-    print(section)
+  globalOptionsSection = config.getTopLevelSection('GlobalOptions')
+  globalOptionsSection.setOption('debug', 'on')
+  globalOptionsSection.setOption('debug', 'off')
 
 if __name__ == '__main__':
   main()

@@ -15,21 +15,56 @@ from xml.dom.minidom import parseString
 from xml.dom.minidom import getDOMImplementation
 
 class Section:
-  def __init__(self, aName, aConfigXMLElement):
-    self.mName = aName
-    self.mElement = aConfigXMLElement
+  """
+     A section within the configuration file. Sections can have options
+     associated with them directly, or can have subsections underneath them.
+  """
+  __mName = None
+  __mElement = None
+  __mParentConfigurator = None
+
+  def __init__(self, aParentConfigurator, aName, aConfigXMLElement):
+    self.__mName = aName
+    self.__mElement = aConfigXMLElement
+    self.__mParentConfigurator = aParentConfigurator
 
   def __str__(self):
-    return "Section: <" + self.mName + ">"
+    return "Section: <" + self.__mName + ">"
 
   def getName(self):
-    return self.mName
+    return self.__mName
 
-  def addOption(self):
-    pass
+  def setOption(self, aOptionName, aOptionValue):
+    document = self.__mElement.ownerDocument
+    madeChange = False
+    foundOption = False
+
+    # First, make sure that the option doesn't already exist
+    for childNode in self.__mElement.childNodes:
+      if childNode.tagName == 'option':
+        if childNode.getAttribute('name')  == aOptionName:
+          foundOption = True
+          newOptionElement = self.createOptionElement(aOptionName, aOptionValue, document)
+          childNode.parentNode.replaceChild(newOptionElement, childNode)
+          madeChange = True
+
+    if not foundOption:
+      optionElement = self.createOptionElement(aOptionName, aOptionValue, document)
+      self.__mElement.appendChild(optionElement)
+      madeChange = True
+
+    if madeChange:
+      self.__mParentConfigurator.writeDocumentToConfigFile()
 
   def addSubSecton(self, aSubSectionName):
     pass
+
+  def createOptionElement(self, aOptionName, aOptionValue, aDocument):
+    optionElement = aDocument.createElement('option')
+    optionElement.setAttribute('name', aOptionName)
+    textNode = aDocument.createTextNode(aOptionValue)
+    optionElement.appendChild(textNode)
+    return optionElement
 
 # An object representing a config file with the following XML structure:
 #
@@ -123,12 +158,31 @@ class Configurator:
   def getTopLevelSections(self):
     return self.mTopLevelSections
 
+  def getTopLevelSection(self, aSectionName):
+    for topSection in self.getTopLevelSections():
+      if topSection.getName() == aSectionName:
+        return topSection
+    return None
+
+  def writeDocumentToConfigFile(self):
+    document = self.mConfigDocument
+    configFilePath = self.mConfigFilePath
+
+    documentXml = document.toxml()
+    documentXml = documentXml.replace("\n", "")
+    document = parseString(documentXml)
+    documentPrettyXml = document.toprettyxml()
+    basicConfigFile = open(configFilePath, 'w');
+    basicConfigFile.write(documentPrettyXml);
+    basicConfigFile.flush();
+    basicConfigFile.close();
+
   # === [ Private API ] =======================================================
 
   def populateTopLevelSections(self):
     rootElement = self.mConfigDocument.documentElement
     for child in rootElement.childNodes:
-      childSection = Section(child.tagName, child)
+      childSection = Section(self, child.tagName, child)
       self.mTopLevelSections.append(childSection)
 
   def getDocument(self):
@@ -144,19 +198,6 @@ class Configurator:
       self.populateTopLevelSections()
 
     return self.mConfigDocument
-
-  def writeDocumentToConfigFile(self):
-    document = self.mConfigDocument
-    configFilePath = self.mConfigFilePath
-
-    documentXml = document.toxml()
-    documentXml = documentXml.replace("\n", "")
-    document = parseString(documentXml)
-    documentPrettyXml = document.toprettyxml()
-    basicConfigFile = open(configFilePath, 'w');
-    basicConfigFile.write(documentPrettyXml);
-    basicConfigFile.flush();
-    basicConfigFile.close();
 
 ## =============== USER INTERFACE SECTION ===============
 
