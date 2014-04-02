@@ -103,6 +103,17 @@ class Section:
   def getElement(self):
     return self.__mElement
 
+  def hasOptions(self):
+    self.repopulateOptionsList()
+    return len(self.__mOptionsList) == 0
+
+  def hasSubSections(self):
+    self.repopulateSubSectionList()
+    return len(self.__mSubSectionList) == 0
+
+  def isEmpty(self):
+    return not self.hasOptions() and not self.hasSubSections()
+
   def setOption(self, aOptionName, aOptionValue):
     global gLogger
     document = self.__mElement.ownerDocument
@@ -129,6 +140,9 @@ class Section:
 
   def triggerXMLUpdate(self):
     self.__mParentConfigurator.writeDocumentToConfigFile()
+
+  def addSubSectionByPath(self, aSubSectionName):
+    pass
 
   def addSubSection(self, aSubSectionName):
     self.repopulateSubSectionList()
@@ -170,6 +184,12 @@ class Section:
         optionValue = childNode.firstChild.data
         newOption = Option(optionName, optionValue, self)
         self.__mOptionsList.append(newOption)
+
+  def getSubSection(self, aSectionName):
+    for section in self.__mSubSectionList:
+      if section.getName() == aSectionName:
+        return section
+    return None
 
   def getOption(self, aOptionName):
     for option in self.__mOptionsList:
@@ -264,6 +284,41 @@ class Configurator:
 
     gLogger.debug("Searching for config file at: " + self.mConfigFilePath)
     self.ensureConfigFileCreated(self.mConfigFilePath)
+
+  def getOptionByPath(self, aOptionPath):
+    global gLogger
+    splitPath = aOptionPath.split(".")
+    gLogger.debug("Split path is: " + str(splitPath))
+    optionName = splitPath[len(splitPath)-1]
+    gLogger.debug("Option name is: " + optionName)
+    sectionPath = ".".join(splitPath[:len(splitPath)-1])
+    gLogger.debug("Section path is: " + sectionPath)
+    section = self.getSectionByPath(sectionPath)
+    gLogger.debug("Found: " + str(section))
+    return section.getOption(optionName)
+
+  def getSectionByPath(self, aSectionPath):
+    global gLogger
+    splitPath = aSectionPath.split('.')
+    if len(splitPath) == 0:
+      raise ValueError("Cannot have an empty path")
+    i = 0
+    nextSectionName = splitPath[i]
+    gLogger.debug("Saw next section named: " + nextSectionName)
+    nextSection = self.getTopLevelSection(nextSectionName)
+    if not nextSection:
+      raise ValueError(nextSectionName + " does not appear to be a valid top level section")
+    i = i + 1
+    totalPath = nextSectionName
+    while i < len(splitPath):
+      nextSectionName = splitPath[i]
+      nextSection = nextSection.getSubSection(nextSectionName)
+      if not nextSection:
+        raise ValueError(totalPath + " does not appear to be a valid section")
+      totalPath = totalPath + "." + nextSectionName
+      i = i + 1
+
+    return nextSection
 
   def addSectionToConfig(self, aSectionName, aSectionParentName='Configuration'):
    document = self.getDocument()

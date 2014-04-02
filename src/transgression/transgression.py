@@ -11,6 +11,12 @@ def main():
 
   globalOptionsSection = config.getTopLevelSection('GlobalOptions')
   globalOptionsSection.setOption('debug', 'on')
+  globalOptionsSection.addSubSection('CoolGlobals')
+
+  subSect = config.getSectionByPath('GlobalOptions.CoolGlobals')
+  subSect.setOption('myName', 'Scott')
+
+  print("Value of GlobalOptions.CoolGlobals.myName:" + config.getOptionByPath('GlobalOptions.CoolGlobals.myName').getValue())
 
 if __name__ == '__main__':
   main()
