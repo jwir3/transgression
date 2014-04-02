@@ -114,6 +114,13 @@ class Section:
   def isEmpty(self):
     return not self.hasOptions() and not self.hasSubSections()
 
+  def createSubSectionByPath(self, aPath):
+    splitPath = aPath.split(".")
+    nextSection = self
+    for nextSectionName in splitPath:
+      nextSection = nextSection.addSubSection(nextSectionName)
+    self.triggerXMLUpdate()
+
   def setOption(self, aOptionName, aOptionValue):
     global gLogger
     document = self.__mElement.ownerDocument
@@ -141,9 +148,6 @@ class Section:
   def triggerXMLUpdate(self):
     self.__mParentConfigurator.writeDocumentToConfigFile()
 
-  def addSubSectionByPath(self, aSubSectionName):
-    pass
-
   def addSubSection(self, aSubSectionName):
     self.repopulateSubSectionList()
 
@@ -160,6 +164,9 @@ class Section:
       self.__mElement.appendChild(sectionElement)
       newSection = Section(self.__mParentConfigurator, aSubSectionName, sectionElement)
       self.triggerXMLUpdate()
+      return newSection
+
+    return None
 
   def getOptionsList(self):
     self.repopulateOptionsList()
@@ -207,6 +214,28 @@ class Section:
   #  textNode = aDocument.createTextNode(aOptionValue)
   #  optionElement.appendChild(textNode)
   #  return optionElement
+
+class InvalidPathException(Exception):
+  __mInvalidPath = None
+  __mValidPath = None
+  __mType = None
+
+  def __init__(self, aType, aValidPath, aInvalidPath):
+    self.__mInvalidPath = aInvalidPath
+    self.__mValidPath = aValidPath
+    self.__mType = aType
+
+  def __str__(self):
+    return "v(" + self.__mValidPath + "), iv(" + self.__mInvalidPath + ")"
+
+  def getType(self):
+    return self.__mType
+
+  def getValidPath(self):
+    return self.__mValidPath
+
+  def getInvalidPath(self):
+    return self.__mInvalidPath
 
 # An object representing a config file with the following XML structure:
 #
@@ -273,7 +302,7 @@ class Configurator:
     self.mConfigFilePath = None
     self.mConfigDirPath = None
     self.mIsGlobal = aGlobal
-    self.mTopLevelSections = []
+    self.__mTopLevelSections = []
 
     if (self.mIsGlobal):
       self.mConfigFilePath = aConfigFilePath
@@ -284,6 +313,32 @@ class Configurator:
 
     gLogger.debug("Searching for config file at: " + self.mConfigFilePath)
     self.ensureConfigFileCreated(self.mConfigFilePath)
+
+  def createOptionByPath(self, aOptionPath, aOptionValue):
+    splitPath = aOptionPath.split(".")
+    optionName = splitPath[len(splitPath) - 1]
+    sectionPath = ".".join(splitPath[:len(splitPath)-1])
+    self.createSectionByPath(sectionPath)
+    section = self.getSectionByPath(sectionPath)
+    section.setOption(optionName, aOptionValue)
+
+  def createSectionByPath(self, aPath):
+    global gLogger
+    gLogger.debug("Creating section by path for path: " + aPath)
+    try:
+      self.getSectionByPath(aPath)
+    except InvalidPathException as ivpException:
+      validPath = ivpException.getValidPath()
+      invalidPath = ivpException.getInvalidPath()
+      gLogger.debug("Valid path: " + validPath)
+      gLogger.debug("Invalid path: " + invalidPath)
+      if validPath != '':
+        validSection = self.getSectionByPath(validPath)
+        validSection.createSubSectionByPath(invalidPath)
+      else:
+        splitPath = invalidPath.split(".")
+        tlSection = self.addSectionToConfig(splitPath[0])
+        tlSection.createSubSectionByPath(".".join(splitPath[1:len(splitPath)]))
 
   def getOptionByPath(self, aOptionPath):
     global gLogger
@@ -300,6 +355,7 @@ class Configurator:
   def getSectionByPath(self, aSectionPath):
     global gLogger
     splitPath = aSectionPath.split('.')
+    gLogger.debug("splitPath: " + str(splitPath))
     if len(splitPath) == 0:
       raise ValueError("Cannot have an empty path")
     i = 0
@@ -307,14 +363,14 @@ class Configurator:
     gLogger.debug("Saw next section named: " + nextSectionName)
     nextSection = self.getTopLevelSection(nextSectionName)
     if not nextSection:
-      raise ValueError(nextSectionName + " does not appear to be a valid top level section")
+      raise InvalidPathException('section', '', aSectionPath)
     i = i + 1
     totalPath = nextSectionName
     while i < len(splitPath):
       nextSectionName = splitPath[i]
       nextSection = nextSection.getSubSection(nextSectionName)
       if not nextSection:
-        raise ValueError(totalPath + " does not appear to be a valid section")
+        raise InvalidPathException('section', totalPath, ".".join(splitPath[i:]))
       totalPath = totalPath + "." + nextSectionName
       i = i + 1
 
@@ -334,9 +390,11 @@ class Configurator:
      element.appendChild(newSectionElement)
 
    self.writeDocumentToConfigFile()
+   self.repopulateTopLevelSections()
+   return self.getTopLevelSection(aSectionName)
 
   def getTopLevelSections(self):
-    return self.mTopLevelSections
+    return self.__mTopLevelSections
 
   def getTopLevelSection(self, aSectionName):
     for topSection in self.getTopLevelSections():
@@ -359,11 +417,12 @@ class Configurator:
 
   # === [ Private API ] =======================================================
 
-  def populateTopLevelSections(self):
+  def repopulateTopLevelSections(self):
+    self.__mTopLevelSections= []
     rootElement = self.mConfigDocument.documentElement
     for child in rootElement.childNodes:
       childSection = Section(self, child.tagName, child)
-      self.mTopLevelSections.append(childSection)
+      self.__mTopLevelSections.append(childSection)
 
   def getDocument(self):
     if not self.mConfigDocument:
@@ -375,7 +434,7 @@ class Configurator:
 
       configFileHandle.close()
       self.mConfigDocument = parseString(documentXml)
-      self.populateTopLevelSections()
+      self.repopulateTopLevelSections()
 
     return self.mConfigDocument
 

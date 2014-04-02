@@ -18,5 +18,8 @@ def main():
 
   print("Value of GlobalOptions.CoolGlobals.myName:" + config.getOptionByPath('GlobalOptions.CoolGlobals.myName').getValue())
 
+  config.createSectionByPath('GlobalOptions.SomeSection')
+  config.createOptionByPath('Something.Someone.Was.here', 'ohyeah')
+
 if __name__ == '__main__':
   main()
