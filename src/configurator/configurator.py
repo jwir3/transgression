@@ -14,6 +14,7 @@ import time
 from xml.dom.minidom import parseString
 from xml.dom.minidom import getDOMImplementation
 from prettylogger import PrettyLogger
+from xml.parsers.expat import ExpatError
 
 gLogger = PrettyLogger(True, False, False)
 
@@ -163,6 +164,7 @@ class Section:
       sectionElement = document.createElement(aSubSectionName)
       self.__mElement.appendChild(sectionElement)
       newSection = Section(self.__mParentConfigurator, aSubSectionName, sectionElement)
+      self.__mSubSectionList.append(newSection)
       self.triggerXMLUpdate()
       return newSection
 
@@ -314,15 +316,17 @@ class Configurator:
     gLogger.debug("Searching for config file at: " + self.mConfigFilePath)
     self.ensureConfigFileCreated(self.mConfigFilePath)
 
-  def createOptionByPath(self, aOptionPath, aOptionValue):
+  def addOptionByPath(self, aOptionPath, aOptionValue):
+    global gLogger
     splitPath = aOptionPath.split(".")
     optionName = splitPath[len(splitPath) - 1]
     sectionPath = ".".join(splitPath[:len(splitPath)-1])
-    self.createSectionByPath(sectionPath)
+    gLogger.debug("Section path: " + sectionPath)
+    self.addSectionByPath(sectionPath)
     section = self.getSectionByPath(sectionPath)
     section.setOption(optionName, aOptionValue)
 
-  def createSectionByPath(self, aPath):
+  def addSectionByPath(self, aPath):
     global gLogger
     gLogger.debug("Creating section by path for path: " + aPath)
     try:
@@ -368,7 +372,9 @@ class Configurator:
     totalPath = nextSectionName
     while i < len(splitPath):
       nextSectionName = splitPath[i]
+      gLogger.debug("Next section(before update): " + str(nextSection))
       nextSection = nextSection.getSubSection(nextSectionName)
+      gLogger.debug("Got next section: " + str(nextSection))
       if not nextSection:
         raise InvalidPathException('section', totalPath, ".".join(splitPath[i:]))
       totalPath = totalPath + "." + nextSectionName
@@ -433,7 +439,14 @@ class Configurator:
       documentXml = ''.join(l.rstrip().lstrip() for l in configFileHandle)
 
       configFileHandle.close()
-      self.mConfigDocument = parseString(documentXml)
+      try:
+        self.mConfigDocument = parseString(documentXml)
+      except ExpatError:
+        # This would likely indicate that the configuration file is
+        # corrupt, so let's remove it and start over.
+        os.remove(configFile)
+        return self.getDocument()
+
       self.repopulateTopLevelSections()
 
     return self.mConfigDocument
@@ -449,13 +462,13 @@ class Configurator:
 #    if gMainElement == '':
 #        document = getDocument()
 #        mainElements = document.getElementsByTagName("JMozTools")
-#    
+#
 #        if len(mainElements) > 1 :
 #            sys.stderr.write("There was more than one JMozTools element detected.\n")
 #            return ''
-#    
+#
 #        gMainElement = mainElements[0]
-#    
+#
 #    return gMainElement
 #
 ## Retrieves the <cache> element of the xml document for JMozTools.
@@ -463,13 +476,13 @@ class Configurator:
 #    global gCacheElement
 #    if gCacheElement:
 #        return gCacheElement
-#    
+#
 #    mainElement = getMainElement()
 #    caches = mainElement.getElementsByTagName("Cache")
 #    # There should only be a single cache
 #    if len(caches) == 0:
 #        gCacheElement = createCacheInConfig()
-#        
+#
 #    elif len(caches) > 1:
 #        print("Warning: JMozConfig detected multiple <cache> elements in " + getConfigFile())
 #        gCacheElement = caches[0]
@@ -524,25 +537,25 @@ class Configurator:
 #
 #def getCacheForUtility(aUtility):
 #    global gPossibleUtilities
-#    
+#
 #    if not aUtility in gPossibleUtilities:
 #        raise StandardError("ERROR: " + aUtility + " not in list of approved JMozTools utilities. Refusing to create cache storage.")
-#    
+#
 #    cacheElement = getCacheElement()
 #    utils = cacheElement.getElementsByTagName(aUtility)
 #    if len(utils) == 0:
 #        return createCacheForUtility(aUtility)
 #    else:
 #        return utils[0]
-#    
+#
 #def findProject(projName):
 #    mainElement = getMainElement()
 #    projects = mainElement.getElementsByTagName("Project");
 #    for project in projects :
 #        nameAttr = project.getAttribute('name')
-#        if nameAttr == projName : 
+#        if nameAttr == projName :
 #            return project
-#    
+#
 #    # Try to find it as an alias of another project
 #    aliases = getAliases()
 #    if (projName in aliases.keys()):
@@ -557,7 +570,7 @@ class Configurator:
 #    for project in projects:
 #        nameAttr = project.getAttribute('name')
 #        allProjNames.append(nameAttr)
-#    
+#
 #    return allProjNames
 #
 #def getTrackedObjDirectories():
@@ -566,7 +579,7 @@ class Configurator:
 #    for projName in projects:
 #        objDir = getObjDirectoryFor(projName)
 #        trackedObjDirs.append(objDir)
-#    
+#
 #    return trackedObjDirs
 #
 #def getObjDirectoryFor(projName):
@@ -576,11 +589,11 @@ class Configurator:
 #        sys.stderr.write("Project name: '" + projName + "' not recognized.\n")
 #        if not promptCreateProject(projName):
 #            return False
-#        
+#
 #    projectElement = findProject(projName)
 #    if projectElement == '' :
 #        return False
-#    
+#
 #    directories = projectElement.getElementsByTagName('Directory')
 #    for directory in directories :
 #        nameAttr = directory.getAttribute('name')
@@ -596,11 +609,11 @@ class Configurator:
 #        sys.stderr.write("Project name: '" + str(projName) + "' not recognized.\n")
 #        if not promptCreateProject(projName):
 #            return False
-#        
+#
 #    projectElement = findProject(projName)
 #    if projectElement == '' :
 #        return False
-#    
+#
 #    directories = projectElement.getElementsByTagName('Directory')
 #    for directory in directories :
 #        nameAttr = directory.getAttribute('name')
@@ -638,7 +651,7 @@ class Configurator:
 #    mobile = proj.getAttribute('isMobile')
 #    if mobile == 'y' or mobile == 'Y':
 #        return True
-#    
+#
 #    return False
 #
 ## Removes all <TempFile> elements that are children of a particular <Cache>
@@ -648,15 +661,15 @@ class Configurator:
 ## @param aUtility: The utility for which to remove temp file entries.
 #def removeTempFilePathsForUtilityFromConfig(aUtility):
 #    global gPossibleUtilities
-#    
+#
 #    if not aUtility in gPossibleUtilities:
 #        raise StandardError("ERROR: " + aUtility + " not in list of approved JMozTools utilities. Refusing to remove cache storage.")
-#  
+#
 #    cache = getCacheForUtility(aUtility)
-#    
+#
 #    for tempFile in cache.getElementsByTagName("TempFile"):
 #        cache.removeChild(tempFile)
-#        
+#
 #    writeDocumentToConfigFile()
 #
 ## Writes a temporary file name to the XML configuration file that a particular
@@ -681,38 +694,38 @@ class Configurator:
 #        print(sys.exc_info()[0])
 #        print("A fatal error was detected. Terminating.")
 #        sys.exit(1)
-#    
+#
 #    document = getDocument()
 #    tempFilePath = os.path.abspath(aTempFilename)
-#    
+#
 #    # Verify that a temporary file path doesn't already exist for this element
 #    for existingElement in getTempFilePathsForUtility(aUtility):
 #        if existingElement.getAttribute("path") == tempFilePath:
 #            return False
 #
 #    tempFileElement = document.createElement("TempFile")
-#    
+#
 #    if not os.path.exists(aTempFilename):
 #        raise StandardError("ERROR: " + tempFilePath + " does not exist.")
-#    
+#
 #    creationTime = time.ctime(os.path.getctime(tempFilePath))
 #    tempFileElement.setAttribute("date", creationTime)
 #    tempFileElement.setAttribute("path", tempFilePath)
-#    
+#
 #    cache.appendChild(tempFileElement)
-#    
+#
 #    writeDocumentToConfigFile()
-#    
+#
 #    return True
 #
 #def getTempFilePathsForUtility(aUtility):
 #    global gPossibleUtilities
-#    
+#
 #    if not aUtility in gPossibleUtilities:
 #        raise StandardError("ERROR: " + aUtility + " not in list of approved JMozTools utilities. Refusing to retrieve cache storage.")
 #
 #    cache = getCacheForUtility(aUtility)
-#    
+#
 #    return cache.getElementsByTagName("TempFile")
 #
 ## ============ DOCUMENT CONSTRUCTION SECTION =============
@@ -728,7 +741,7 @@ class Configurator:
 #    cacheCommentLine1 = "The cache is used to store temporary data for individual JMozTools utilities."
 #    cacheCommentLine2 = "Any data in here is subject to removal at any time, without notice."
 #    cacheCommentLine3 = "DO NOT PUT HAND-EDITED DATA IN THIS SECTION."
-#    
+#
 #    document = getDocument()
 #    mainElement = getMainElement()
 #    commentElement1 = document.createComment(cacheCommentLine1)
@@ -741,22 +754,22 @@ class Configurator:
 #    mainElement.appendChild(commentElement3)
 #    mainElement.appendChild(cacheElement)
 #    writeDocumentToConfigFile()
-#    
+#
 #    return cacheElement
 #
 #def createCacheForUtility(aUtility):
 #    global gPossibleUtilities
-#    
+#
 #    if not aUtility in gPossibleUtilities:
 #        raise StandardError("ERROR: " + aUtility + " not in list of approved JMozTools utilities. Refusing to create cache storage.")
-#    
+#
 #    document = getDocument()
 #    cacheElement = getCacheElement()
 #    utilityElement = document.createElement(aUtility)
 #    cacheElement.appendChild(utilityElement)
-#    
+#
 #    writeDocumentToConfigFile()
-#    
+#
 #    return utilityElement
 #
 #def createAliasInConfig(aliasName, projName, force=False):
@@ -795,31 +808,31 @@ class Configurator:
 #def createProjectInConfig(projName, srcDir, objDir, isAndroid='no'):
 #    document = getDocument()
 #    mainElement = getMainElement()
-#    
+#
 #    projectElement = document.createElement('Project')
 #    projectElement.setAttribute('name', projName)
 #    projectElement.setAttribute('isMobile', isAndroid)
-#    
+#
 #    srcDirElement = document.createElement('Directory')
 #    srcDirElement.setAttribute('name', 'src')
-#    
+#
 #    srcDirText = document.createTextNode(srcDir)
 #    srcDirElement.appendChild(srcDirText)
 #    projectElement.appendChild(srcDirElement)
-#    
+#
 #    objDirElement = document.createElement('Directory')
 #    objDirElement.setAttribute('name', 'obj')
-#    
+#
 #    objDirText = document.createTextNode(objDir)
 #    objDirElement.appendChild(objDirText)
 #    projectElement.appendChild(objDirElement)
-#    
+#
 #    mainElement.appendChild(projectElement)
-#    
+#
 #    setLastProject(projName)
-#    
+#
 #    writeDocumentToConfigFile()
-#    
+#
 #    return
 #
 #def setDocumentGlobal(document):
@@ -828,22 +841,22 @@ class Configurator:
 #    return
 #
 ## ================== CONFIG FILE SECTION ==================
-#        
+#
 #def createProject(projName, isAndroid='no'):
-#    
+#
 #    srcDir = '';
 #    while srcDir == '':
 #        srcDir = promptForSourceDirectory(projName)
-#    
+#
 #    objDir = '';
 #    while objDir == '':
 #        objDir = promptForObjectDirectory(projName)
-#    
+#
 #    createProjectInConfig(projName, srcDir, objDir, isAndroid)
 #
 #    return
 #
-#    
+#
 #
 #def promptForSourceDirectory(projName):
 #    directory = "/home/" + JMozUtilities.getUserName() + "/Source/mozilla-" + projName + "/mozilla"
@@ -853,9 +866,9 @@ class Configurator:
 #        effectiveDir = directory
 #    if not os.path.isdir(effectiveDir):
 #        return ''
-#    
+#
 #    return effectiveDir
-#    
+#
 #def promptForObjectDirectory(projName):
 #    directory = "/home/" + JMozUtilities.getUserName() + "/Source/mozilla-" + projName + "/obj"
 #    sys.stderr.write("Object directory for project '" + projName + "' [" + directory + "]: ")
@@ -864,7 +877,7 @@ class Configurator:
 #        effectiveDir = directory
 #    if not os.path.isdir(effectiveDir):
 #        return ''
-#    
+#
 #    return effectiveDir
 #
 #def getListOfProjectNames():
@@ -914,15 +927,15 @@ class Configurator:
 #        if not (query == 'y' or query == 'Y') :
 #            sys.stderr.write("Project '" + projName + "' not created.\n")
 #            raise IOError(1,"Unable to use project: " + projName)
-#        
+#
 #        sys.stderr.write("Is this project a mobile project [y/N]? ")
 #        isAndroid = 'n';
 #        query = raw_input()
 #        if (query == 'y' or query == 'Y'):
 #            isAndroid = 'y';
-#               
+#
 #        createProject(projName, isAndroid)
-#        
+#
 #        sys.stderr.write("Project '" + projName + "' created.\n")
 #    except KeyboardInterrupt:
 #        # Let's clean up the already (possibly created) project in the XML
@@ -936,5 +949,5 @@ class Configurator:
 #        writeDocumentToConfigFile()
 #        sys.stderr.write("Exiting...\n")
 #        sys.exit(0);
-#        
+#
 #    return True
