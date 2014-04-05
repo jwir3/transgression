@@ -186,11 +186,16 @@ class Section:
         self.__mSubSectionList.append(newSection)
 
   def repopulateOptionsList(self):
+    global gLogger
+    gLogger.debug("Options list being repopulated for: " + self.getName())
     self.__mOptionsList = []
     for childNode in self.__mElement.childNodes:
       if childNode.tagName == 'option':
         optionName = childNode.getAttribute('name')
-        optionValue = childNode.firstChild.data
+        if childNode.firstChild:
+          optionValue = childNode.firstChild.data
+        else:
+          optionValue = ""
         newOption = Option(optionName, optionValue, self)
         self.__mOptionsList.append(newOption)
 
@@ -358,14 +363,19 @@ class Configurator:
 
   def getSectionByPath(self, aSectionPath):
     global gLogger
+
+    gLogger.debug("Top level sections: ")
+    for sec in self.getTopLevelSections():
+      gLogger.debug(str(sec))
     splitPath = aSectionPath.split('.')
     gLogger.debug("splitPath: " + str(splitPath))
     if len(splitPath) == 0:
       raise ValueError("Cannot have an empty path")
     i = 0
     nextSectionName = splitPath[i]
-    gLogger.debug("Saw next section named: " + nextSectionName)
+    gLogger.debug("Next path to search for: " + nextSectionName)
     nextSection = self.getTopLevelSection(nextSectionName)
+    gLogger.debug("Found nextSection: " + str(nextSection))
     if not nextSection:
       raise InvalidPathException('section', '', aSectionPath)
     i = i + 1
@@ -400,6 +410,7 @@ class Configurator:
    return self.getTopLevelSection(aSectionName)
 
   def getTopLevelSections(self):
+    self.repopulateTopLevelSections()
     return self.__mTopLevelSections
 
   def getTopLevelSection(self, aSectionName):
@@ -424,8 +435,10 @@ class Configurator:
   # === [ Private API ] =======================================================
 
   def repopulateTopLevelSections(self):
+    global gLogger
+    gLogger.debug("Repopulating top level sections")
     self.__mTopLevelSections= []
-    rootElement = self.mConfigDocument.documentElement
+    rootElement = self.getDocument().documentElement
     for child in rootElement.childNodes:
       childSection = Section(self, child.tagName, child)
       self.__mTopLevelSections.append(childSection)

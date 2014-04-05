@@ -20,5 +20,5 @@ setup(name=progName,
       packages=['transgression', 'configurator'],
       entry_points=entry_points,
       install_requires=['argparse', 'ansicolors', 'httplib2', 'mozfile',
-                        'mozprofile', 'mozrunner', 'BeautifulSoup']
+                        'mozprofile', 'mozrunner', 'BeautifulSoup', 'paramiko']
 )
