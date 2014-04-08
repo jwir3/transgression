@@ -13,7 +13,7 @@ import time
 
 from xml.dom.minidom import parseString
 from xml.dom.minidom import getDOMImplementation
-from prettylogger import PrettyLogger
+from prettylogger.prettylogger import PrettyLogger
 from xml.parsers.expat import ExpatError
 
 gLogger = PrettyLogger(True, False, False)

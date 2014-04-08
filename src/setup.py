@@ -1,8 +1,8 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 import os
 
 progName = 'transgression'
-progVersion = '0.0.2'
+progVersion = '0.0.4'
 progDescription='Generic binary regression finding utility based off of mozregression'
 progAuthor = 'Scott Johnson'
 progEmail = 'jaywir3@gmail.com'
@@ -17,7 +17,7 @@ setup(name=progName,
       author=progAuthor,
       author_email=progEmail,
       url=progUrl,
-      packages=['transgression', 'configurator'],
+      packages=find_packages(),
       entry_points=entry_points,
       install_requires=['argparse', 'ansicolors', 'httplib2', 'mozfile',
                         'mozprofile', 'mozrunner', 'BeautifulSoup', 'paramiko']

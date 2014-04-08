@@ -1,3 +1,4 @@
+#TEST
 from colors import *
 
 # This is a class that allows us to print prettier output to the command line.

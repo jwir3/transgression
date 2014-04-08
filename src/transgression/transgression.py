@@ -4,7 +4,7 @@ import os.path
 import paramiko
 from time import sleep
 import getpass
-from prettylogger import PrettyLogger
+from prettylogger.prettylogger import PrettyLogger
 from ui import showMenu
 
 gLogger = None
@@ -104,7 +104,7 @@ def getBinaryTypeFromUser(progName):
   global gBinTypeSelected
   # showMenu(gSupportedLocations)
   # return gBinTypeSelected
-  
+
   # We only have one possible option right now.
   return 'sftp'
 
