@@ -105,12 +105,14 @@ class Section:
     return self.__mElement
 
   def hasOptions(self):
+    global gLogger
     self.repopulateOptionsList()
-    return len(self.__mOptionsList) == 0
+    gLogger.debug("Number of options in list: " + str(len(self.__mOptionsList)))
+    return len(self.__mOptionsList) != 0
 
   def hasSubSections(self):
     self.repopulateSubSectionList()
-    return len(self.__mSubSectionList) == 0
+    return len(self.__mSubSectionList) != 0
 
   def isEmpty(self):
     return not self.hasOptions() and not self.hasSubSections()

@@ -20,5 +20,6 @@ setup(name=progName,
       packages=find_packages(),
       entry_points=entry_points,
       install_requires=['argparse', 'ansicolors', 'httplib2', 'mozfile',
-                        'mozprofile', 'mozrunner', 'BeautifulSoup', 'paramiko']
+                        'mozprofile', 'mozrunner', 'BeautifulSoup', 'paramiko',
+                        'unittest']
 )
