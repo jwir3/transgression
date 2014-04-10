@@ -36,6 +36,12 @@ class Option:
     if not self.findXMLElement():
       self.addElementToDocument()
 
+  def __eq__(self, aOther):
+    namesEqual = self.__mName == aOther.getName()
+    valuesEqual = self.__mValue == aOther.getValue()
+    parentSectionsEqual = self.__mParentSection == aOther.getParentSection()
+    return namesEqual and valuesEqual and parentSectionsEqual
+
   def getName(self):
     return self.__mName
 
@@ -82,11 +88,13 @@ class Section:
   __mName = None
   __mElement = None
   __mParentConfigurator = None
+  __mParentSection = None
   __mOptionsList = []
   __mSubSectionList = []
 
-  def __init__(self, aParentConfigurator, aName, aConfigXMLElement):
+  def __init__(self, aParentConfigurator, aName, aParent, aConfigXMLElement):
     self.__mName = aName
+    self.__mParentSection = aParent
     self.__mElement = aConfigXMLElement
     self.__mParentConfigurator = aParentConfigurator
     self.repopulateOptionsList()
@@ -94,6 +102,45 @@ class Section:
 
   def __str__(self):
     return "Section: <" + self.__mName + ">"
+
+  def __eq__(self, aOther):
+    namesEqual = self.__mName == aOther.getName()
+    parentsEqual = self.__mParentConfigurator == aOther.getConfigurator()
+    pathsEqual = self.getPath() == aOther.getPath()
+    subSectionsSelf = self.getSubSections()
+    subSectionsOther = aOther.getSubSections()
+    numSubSectionsEqual = len(subSectionsSelf) == len(subSectionsOther)
+    subSectionsEqual = numSubSectionsEqual
+    i = 0
+    for subSection in subSectionsSelf:
+      if subSectionsEqual:
+        subSectionsEqual = subSectionsEqual and (subSection == subSectionsOther[i])
+        i = i + 1
+
+    optionsSelf = self.getOptions()
+    optionsOther = aOther.getOptions()
+    optionsEqual = len(optionsSelf) == len(optionsOther)
+    j = 0
+    for option in optionsSelf:
+      if optionsEqual:
+        optionsEqual = optionsEqual and (option == optionsOther[j])
+        j = j + 1
+
+    return namesEqual and parentsEqual and pathsEqual and subSectionsEqual and optionsEqual
+
+  def getPath(self):
+    if self.isTopLevelSection():
+      return self.getName()
+
+    return self.getParentSection().getPath() + "." + self.getName()
+
+  def getParentSection(self):
+    return self.__mParentSection
+
+  def isTopLevelSection(self):
+    if not self.__mParentSection:
+      return True
+    return False
 
   def getConfigurator(self):
     return self.__mParentConfigurator
@@ -165,14 +212,14 @@ class Section:
       document = self.__mElement.ownerDocument
       sectionElement = document.createElement(aSubSectionName)
       self.__mElement.appendChild(sectionElement)
-      newSection = Section(self.__mParentConfigurator, aSubSectionName, sectionElement)
+      newSection = Section(self.__mParentConfigurator, aSubSectionName, self, sectionElement)
       self.__mSubSectionList.append(newSection)
       self.triggerXMLUpdate()
       return newSection
 
     return None
 
-  def getOptionsList(self):
+  def getOptions(self):
     self.repopulateOptionsList()
     return self.__mOptionsList
 
@@ -184,7 +231,7 @@ class Section:
     for childNode in self.__mElement.childNodes:
       if childNode.tagName != 'option':
         sectionName = childNode.tagName
-        newSection = Section(self.__mParentConfigurator, sectionName, childNode)
+        newSection = Section(self.__mParentConfigurator, sectionName, self, childNode)
         self.__mSubSectionList.append(newSection)
 
   def repopulateOptionsList(self):
@@ -216,13 +263,6 @@ class Section:
   def createOption(self, aOptionName, aOptionValue):
     newOption = Option(aOptionName, aOptionValue, self)
     self.__mOptionsList.append(newOption)
-
-  #def createOptionElement(self, aOptionName, aOptionValue, aDocument):
-  #  optionElement = aDocument.createElement('option')
-  #  optionElement.setAttribute('name', aOptionName)
-  #  textNode = aDocument.createTextNode(aOptionValue)
-  #  optionElement.appendChild(textNode)
-  #  return optionElement
 
 class InvalidPathException(Exception):
   __mInvalidPath = None
@@ -322,6 +362,12 @@ class Configurator:
 
     gLogger.debug("Searching for config file at: " + self.mConfigFilePath)
     self.ensureConfigFileCreated(self.mConfigFilePath)
+
+  def __eq__(self, aOther):
+    return self.mConfigFilePath == aOther.getConfigFilePath()
+
+  def getConfigFilePath(self):
+    return self.mConfigFilePath
 
   def addOptionByPath(self, aOptionPath, aOptionValue):
     global gLogger
@@ -442,7 +488,7 @@ class Configurator:
     self.__mTopLevelSections= []
     rootElement = self.getDocument().documentElement
     for child in rootElement.childNodes:
-      childSection = Section(self, child.tagName, child)
+      childSection = Section(self, child.tagName, None, child)
       self.__mTopLevelSections.append(childSection)
 
   def getDocument(self):

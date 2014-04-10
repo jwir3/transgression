@@ -10,8 +10,7 @@ class ConfiguratorTest(unittest.TestCase):
     gConfig = Configurator('/tmp/test-config.xml', aDebugOutput=True)
 
   def tearDown(self):
-    pass
-    #os.remove('/tmp/test-config.xml')
+    os.remove('/tmp/test-config.xml')
 
   def test_createNewFile(self):
     fileExists = os.path.exists('/tmp/test-config.xml')
@@ -29,6 +28,26 @@ class ConfiguratorTest(unittest.TestCase):
     newSection.addSubSection('HelloWorld')
     hwSection = gConfig.getSectionByPath('Something.SomethingElse.HelloWorld')
     self.assertEquals('HelloWorld', hwSection.getName())
+    self.assertEquals('Something.SomethingElse.HelloWorld', hwSection.getPath())
+
+    tlSections = gConfig.getTopLevelSections()
+    self.assertEquals(1, len(tlSections))
+    self.assertEquals('Something', tlSections[0].getName())
+    firstTlSection = tlSections[0]
+
+    tlSectionOne = gConfig.getTopLevelSection('Something')
+    self.assertEquals(firstTlSection, tlSectionOne)
+
+  def test_options(self):
+    global gConfig
+    gConfig.addOptionByPath("MyOptionSection.SubSection.anOption", "true")
+    gConfig.addOptionByPath("MyOptionSection.SubSection.anotherOption", "false")
+    option = gConfig.getOptionByPath("MyOptionSection.SubSection.anOption")
+    option2 = gConfig.getOptionByPath("MyOptionSection.SubSection.anOption")
+
+    self.assertEquals("anOption", option.getName())
+    self.assertEquals("true", option.getValue())
+    self.assertNotEquals(option, option2)
 
 if __name__ == '__main__':
   unittest.main()
