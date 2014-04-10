@@ -1,5 +1,6 @@
 import unittest
 from configurator import Configurator
+from configurator import Section
 import os.path
 import os
 
@@ -37,6 +38,15 @@ class ConfiguratorTest(unittest.TestCase):
 
     tlSectionOne = gConfig.getTopLevelSection('Something')
     self.assertEquals(firstTlSection, tlSectionOne)
+
+  def test_sections_different_attrs_not_equal(self):
+    global gConfig
+    gConfig.addSectionByPath('Something.SomethingElse')
+    parent = gConfig.getSectionByPath('Something')
+    firstSection = Section(gConfig, 'Section', parent, None, {'some' : 'attr'})
+    secondSection = Section(gConfig, 'Section', parent, None)
+
+    self.assertNotEquals(firstSection, secondSection)
 
   def test_options(self):
     global gConfig

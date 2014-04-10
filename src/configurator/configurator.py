@@ -18,6 +18,33 @@ from xml.parsers.expat import ExpatError
 
 gLogger = PrettyLogger(True, False, False)
 
+class Attribute:
+  """
+     A unique attribute on a section. The concatenation of all attributes
+     of a section is essentially the same as a unique identifier for a
+     section.
+  """
+  __mName = None
+  __mValue = None
+  __mSection = None
+
+  def __init__(self, aSection, aName, aValue):
+    self.__mName = aName
+    self.__mValue = aValue
+    self.__mSection = aSection
+
+  def __eq__(self, aOther):
+    # We only compare name and value, because the section eq() method
+    # compares these, so comparing sections would result in infinite
+    # regression.
+    return self.getName() == aOther.getName() and self.getValue() == aOther.getValue()
+
+  def getName(self):
+    return self.__mName
+
+  def getValue(self):
+    return self.__mValue
+
 class Option:
   """
      An option within the configuration file. Has a Section as a parent.
@@ -91,14 +118,23 @@ class Section:
   __mParentSection = None
   __mOptionsList = []
   __mSubSectionList = []
+  __mAttrList = []
 
-  def __init__(self, aParentConfigurator, aName, aParent, aConfigXMLElement):
+  def __init__(self, aParentConfigurator, aName, aParent, aConfigXMLElement, aAttrs={}):
     self.__mName = aName
     self.__mParentSection = aParent
     self.__mElement = aConfigXMLElement
     self.__mParentConfigurator = aParentConfigurator
-    self.repopulateOptionsList()
-    self.repopulateSubSectionList()
+
+    for attributeName in aAttrs.keys():
+      self.__mAttrList.append(Attribute(self, attributeName, aAttrs[attributeName]))
+
+    if aConfigXMLElement:
+      # If this isn't the case, then we're in a sort of manual mode.
+      # Most likely, this is for testing so just continue without
+      # inferring structure.
+      self.repopulateOptionsList()
+      self.repopulateSubSectionList()
 
   def __str__(self):
     return "Section: <" + self.__mName + ">"
@@ -107,6 +143,18 @@ class Section:
     namesEqual = self.__mName == aOther.getName()
     parentsEqual = self.__mParentConfigurator == aOther.getConfigurator()
     pathsEqual = self.getPath() == aOther.getPath()
+
+    subSectionsEqual = self.subSectionsEqual(aOther)
+    optionsEqual = self.optionsEqual(aOther)
+    attrsEqual = self.attributesEqual(aOther)
+
+    return namesEqual and parentsEqual and pathsEqual and subSectionsEqual and optionsEqual and attrsEqual
+
+  def attributesEqual(self, aOther):
+    numAttrsEqual = len(self.getAttributes()) == len(aOther.getAttributes())
+    return numAttrsEqual
+
+  def subSectionsEqual(self, aOther):
     subSectionsSelf = self.getSubSections()
     subSectionsOther = aOther.getSubSections()
     numSubSectionsEqual = len(subSectionsSelf) == len(subSectionsOther)
@@ -116,7 +164,9 @@ class Section:
       if subSectionsEqual:
         subSectionsEqual = subSectionsEqual and (subSection == subSectionsOther[i])
         i = i + 1
+    return subSectionsEqual
 
+  def optionsEqual(self, aOther):
     optionsSelf = self.getOptions()
     optionsOther = aOther.getOptions()
     optionsEqual = len(optionsSelf) == len(optionsOther)
@@ -124,9 +174,11 @@ class Section:
     for option in optionsSelf:
       if optionsEqual:
         optionsEqual = optionsEqual and (option == optionsOther[j])
-        j = j + 1
+      j = j + 1
+    return optionsEqual
 
-    return namesEqual and parentsEqual and pathsEqual and subSectionsEqual and optionsEqual
+  def getAttributes(self):
+    return self.__mAttrList
 
   def getPath(self):
     if self.isTopLevelSection():
