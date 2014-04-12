@@ -125,8 +125,19 @@ class ConfiguratorTest(unittest.TestCase):
 
     self.assertNotEquals(binarySectionOne, binarySectionTwo)
 
-  def test_add_option_to_section(self):
+    #foundSection = self.gConfig.getSectionByPath('Binaries.Binary[name="someBinary"]')
+    #self.assertEquals(binarySectionOne, foundSection)
 
+  def test_section_contains_attributes(self):
+    binarySectionOne = self.gConfig.addSectionByPath('Binaries.Binary')
+    binarySectionOne.addAttribute('name', 'someBinary')
+    binarySectionOne.addAttribute('Grape', 'true')
+    self.assertTrue(binarySectionOne.containsAttributes({'name' : 'someBinary'}))
+    self.assertTrue(binarySectionOne.containsAttributes({'Grape' : 'true'}))
+    self.assertFalse(binarySectionOne.containsAttributes({'name' : 'jedi'}))
+    self.assertTrue(binarySectionOne.containsAttributes({'name' : 'someBinary', 'Grape': 'true'}))
+
+  def test_add_option_to_section(self):
     newSection = self.gConfig.addSection("UND")
     self.assertFalse(newSection.hasOptions())
     newSection.setOption('Hockey', 'true')
