@@ -60,17 +60,22 @@ class Option:
     self.__mName = aName
     self.__mValue = aValue
     self.__mParentSection = aParentSection
-    if not self.findXMLElement():
-      self.addElementToDocument()
+    # if not self.findXMLElement():
+    #   self.addElementToDocument()
+
+  def __str__(self):
+    return "[Option: " + self.__mName + "=" + self.__mValue + "]"
 
   def __eq__(self, aOther):
     namesEqual = self.__mName == aOther.getName()
     valuesEqual = self.__mValue == aOther.getValue()
-    parentSectionsEqual = self.__mParentSection == aOther.getParentSection()
-    return namesEqual and valuesEqual and parentSectionsEqual
+    return namesEqual and valuesEqual
 
   def getName(self):
     return self.__mName
+
+  def getSection(self):
+    return self.__mParentSection
 
   def getValue(self):
     return self.__mValue
@@ -79,25 +84,25 @@ class Option:
     self.__mValue = aValue
     self.updateXML()
 
-  def findXMLElement(self):
-    parentElement = self.__mParentSection.getElement()
-    for childNode in parentElement.childNodes:
-      if childNode.tagName == 'option' and childNode.getAttribute('name') == self.__mName:
-        self.__mElement = childNode
+  # def findXMLElement(self):
+  #   parentElement = self.__mParentSection.getElement()
+  #   for childNode in parentElement.childNodes:
+  #     if childNode.tagName == 'option' and childNode.getAttribute('name') == self.__mName:
+  #       self.__mElement = childNode
+  #
+  #   return self.__mElement
+  #
+  # def updateXML(self):
+  #   newElement = self.createNewXMLElement()
+  #   self.__mElement.parentNode.replaceChild(newElement, self.__mElement)
+  #   self.__mElement = newElement
+  #   self.__mParentSection.triggerXMLUpdate()
 
-    return self.__mElement
-
-  def updateXML(self):
-    newElement = self.createNewXMLElement()
-    self.__mElement.parentNode.replaceChild(newElement, self.__mElement)
-    self.__mElement = newElement
-    self.__mParentSection.triggerXMLUpdate()
-
-  def addElementToDocument(self):
-    newElement = self.createNewXMLElement()
-    self.__mElement = newElement
-    self.__mParentSection.getElement().appendChild(self.__mElement)
-    self.__mParentSection.triggerXMLUpdate()
+  # def addElementToDocument(self):
+  #   newElement = self.createNewXMLElement()
+  #   self.__mElement = newElement
+  #   self.__mParentSection.getElement().appendChild(self.__mElement)
+  #   self.__mParentSection.triggerXMLUpdate()
 
   def createNewXMLElement(self):
     document = self.__mParentSection.getElement().ownerDocument
@@ -120,21 +125,20 @@ class Section:
   __mSubSectionList = []
   __mAttrList = []
 
-  def __init__(self, aParentConfigurator, aName, aParent, aConfigXMLElement, aAttrs={}):
+  def __init__(self, aParentConfigurator, aName, aParent, aAttrs={}):
     self.__mName = aName
     self.__mParentSection = aParent
-    self.__mElement = aConfigXMLElement
     self.__mParentConfigurator = aParentConfigurator
 
     for attributeName in aAttrs.keys():
       self.__mAttrList.append(Attribute(self, attributeName, aAttrs[attributeName]))
 
-    if aConfigXMLElement:
-      # If this isn't the case, then we're in a sort of manual mode.
-      # Most likely, this is for testing so just continue without
-      # inferring structure.
-      self.repopulateOptionsList()
-      self.repopulateSubSectionList()
+    # if aConfigXMLElement:
+    #   # If this isn't the case, then we're in a sort of manual mode.
+    #   # Most likely, this is for testing so just continue without
+    #   # inferring structure.
+    #   self.repopulateOptionsList()
+    #   self.repopulateSubSectionList()
 
   def __str__(self):
     return "Section: <" + self.__mName + ">"
@@ -144,11 +148,21 @@ class Section:
     parentsEqual = self.__mParentConfigurator == aOther.getConfigurator()
     pathsEqual = self.getPath() == aOther.getPath()
 
-    subSectionsEqual = self.subSectionsEqual(aOther)
+    #subSectionsEqual = self.subSectionsEqual(aOther)
     optionsEqual = self.optionsEqual(aOther)
     attrsEqual = self.attributesEqual(aOther)
 
-    return namesEqual and parentsEqual and pathsEqual and subSectionsEqual and optionsEqual and attrsEqual
+    return namesEqual and parentsEqual and pathsEqual and optionsEqual and attrsEqual
+
+  def __contains__(self, aThing):
+    if isinstance(aThing, Attribute):
+      return aThing in self.getAttributes()
+    elif isinstance(aThing, Section):
+      return aThing in self.getSubSections()
+    elif isinstance(aThing, Option):
+      return aThing in self.getOptions()
+
+    return False
 
   def attributesEqual(self, aOther):
     numAttrsEqual = len(self.getAttributes()) == len(aOther.getAttributes())
@@ -201,12 +215,34 @@ class Section:
     return self.__mName
 
   def getElement(self):
+    global gLogger
+    gLogger.debug("Section: " + str(self))
+    if not self.__mElement:
+      parentSection = self.getParentSection()
+      gLogger.debug("Parent section: " + str(parentSection))
+      if not parentSection:
+        # This is a top-level section.
+        parentElement = self.getConfigurator().getTopElement()
+      else:
+        parentElement = parentSection.getElement()
+
+      gLogger.debug("getElement(): parentElement - " + str(parentElement))
+      document = self.getConfigurator().getDocument()
+      newSectionElement = document.createElement(self.getName())
+      for attribute in self.getAttributes():
+        newSectionElement.setAttribute(attribute.getName(), attribute.getValue())
+      parentElement.appendChild(newSectionElement)
+      gLogger.debug("getElement(): element - " + str(newSectionElement))
+
+      self.__mElement = newSectionElement
+
     return self.__mElement
+
+  def invalidateElement(self):
+    self.__mElement = None
 
   def hasOptions(self):
     global gLogger
-    self.repopulateOptionsList()
-    gLogger.debug("Number of options in list: " + str(len(self.__mOptionsList)))
     return len(self.__mOptionsList) != 0
 
   def hasSubSections(self):
@@ -223,82 +259,66 @@ class Section:
       nextSection = nextSection.addSubSection(nextSectionName)
     self.triggerXMLUpdate()
 
+  def getAttributeByName(self, aAttributeName):
+    for attribute in self.getAttributes():
+      if attribute.getName() == aAttributeName:
+        return attribute
+    return None
+
+  def addAttribute(self, aAttributeName, aAttributeValue):
+    attribute = Attribute(self, aAttributeName, aAttributeValue)
+    self.triggerXMLUpdate()
+
   def setOption(self, aOptionName, aOptionValue):
-    global gLogger
-    document = self.__mElement.ownerDocument
-    madeChange = False
-    foundOption = False
-
-    # First, make sure that the option doesn't already exist
-    for option in self.__mOptionsList:
-      if option.getName() == aOptionName:
-        foundOption = True
-        gLogger.debug("Found option. Updating.")
-        if option.getValue() != aOptionValue:
-          option.setValue(aOptionValue)
-          break
-
-    if not foundOption:
-      gLogger.debug("Didn't find option, so creating new one.")
-      self.createOption(aOptionName, aOptionValue)
-      madeChange = True
-
-    if madeChange:
-      gLogger.debug("Made change, so outputting configuration file.")
-      self.triggerXMLUpdate()
+    newOption = Option(aOptionName, aOptionValue, self)
+    for option in self.getOptions():
+      if newOption == option:
+        return option
+    self.getOptions().append(newOption)
+    return newOption
 
   def triggerXMLUpdate(self):
+    # Update our XML document to contain this particular section.
+    element = self.getElement()
+
+    # # Write the XML document out
+    # # TODO: We should add a flag that doesn't do this if we're going
+    # #       to wait to coalesce XML updates.
     self.__mParentConfigurator.writeDocumentToConfigFile()
 
   def addSubSection(self, aSubSectionName):
-    self.repopulateSubSectionList()
-
-    # Make sure we don't already have a subsection with this name
-    foundSection = False
-    for section in self.__mSubSectionList:
-      if section.getName() == aSubSectionName:
-        foundSection = True
-
-    if not foundSection:
-      # Create the new section XML element
-      document = self.__mElement.ownerDocument
-      sectionElement = document.createElement(aSubSectionName)
-      self.__mElement.appendChild(sectionElement)
-      newSection = Section(self.__mParentConfigurator, aSubSectionName, self, sectionElement)
-      self.__mSubSectionList.append(newSection)
-      self.triggerXMLUpdate()
-      return newSection
-
-    return None
+    # Create the new section XML element
+    newSection = Section(self.__mParentConfigurator, aSubSectionName, self)
+    self.getSubSections().append(newSection)
+    return newSection
 
   def getOptions(self):
-    self.repopulateOptionsList()
     return self.__mOptionsList
 
   def getSubSections(self):
     return self.__mSubSectionList
 
-  def repopulateSubSectionList(self):
-    self.__mSubSectionList = []
-    for childNode in self.__mElement.childNodes:
-      if childNode.tagName != 'option':
-        sectionName = childNode.tagName
-        newSection = Section(self.__mParentConfigurator, sectionName, self, childNode)
-        self.__mSubSectionList.append(newSection)
+  # def repopulateSubSectionList(self):
+  #   self.__mSubSectionList = []
+  #   for childNode in self.__mElement.childNodes:
+  #     if childNode.tagName != 'option':
+  #       sectionName = childNode.tagName
+  #       newSection = Section(self.__mParentConfigurator, sectionName, self, childNode)
+  #       self.__mSubSectionList.append(newSection)
 
-  def repopulateOptionsList(self):
-    global gLogger
-    gLogger.debug("Options list being repopulated for: " + self.getName())
-    self.__mOptionsList = []
-    for childNode in self.__mElement.childNodes:
-      if childNode.tagName == 'option':
-        optionName = childNode.getAttribute('name')
-        if childNode.firstChild:
-          optionValue = childNode.firstChild.data
-        else:
-          optionValue = ""
-        newOption = Option(optionName, optionValue, self)
-        self.__mOptionsList.append(newOption)
+  # def repopulateOptionsList(self):
+  #   global gLogger
+  #   gLogger.debug("Options list being repopulated for: " + self.getName())
+  #   self.__mOptionsList = []
+  #   for childNode in self.__mElement.childNodes:
+  #     if childNode.tagName == 'option':
+  #       optionName = childNode.getAttribute('name')
+  #       if childNode.firstChild:
+  #         optionValue = childNode.firstChild.data
+  #       else:
+  #         optionValue = ""
+  #       newOption = Option(optionName, optionValue, self)
+  #       self.__mOptionsList.append(newOption)
 
   def getSubSection(self, aSectionName):
     for section in self.__mSubSectionList:
@@ -348,52 +368,6 @@ class InvalidPathException(Exception):
 class Configurator:
   # === [ Public API ] =========================================================
 
-  def isWindows(self):
-    if os.name == 'nt':
-      return True
-
-    return False
-
-  def isUnix(self):
-    if os.name == 'posix':
-      return True
-
-    return False
-
-  def isMsys(self):
-    try:
-      ostype = os.environ['OSTYPE']
-      if ostype == 'msys':
-        return True
-    except KeyError:
-      if 'MSYSTEM' in os.environ.keys():
-        return True
-    return False
-
-  def ensureConfigDirCreated(self, aConfigFilePath):
-    # TODO: If we intend to support msys at some later date, we should re-enable
-    #       this old code from JMozTools
-    #if isMsys():
-    #    # If we're on msys, then the config dir path
-    #    # should be C:\Users\<user>\...
-    #    appData = os.environ['APPDATA']
-    #    homeDir = os.path.split(appData)[0]
-    #    homeDir = os.path.split(homeDir)[0]
-    #    self.mConfigDirPath = os.path.join(homeDir, self.mConfigDirPath)
-
-    self.mConfigDirPath = os.path.dirname(aConfigFilePath)
-
-    if not os.path.exists(self.mConfigDirPath):
-        os.mkdir(self.mConfigDirPath);
-
-  def ensureConfigFileCreated(self, aConfigFilePath):
-    self.ensureConfigDirCreated(aConfigFilePath)
-    if not os.path.exists(self.mConfigFilePath):
-      domImpl = getDOMImplementation()
-      self.mConfigDocument = domImpl.createDocument('', 'Configuration', None)
-      #createNewOptionsSection()
-      self.writeDocumentToConfigFile()
-
   def __init__(self, aConfigFilePath, aGlobal=False, aDebugOutput=False):
     global gLogger
     if aDebugOutput:
@@ -417,6 +391,39 @@ class Configurator:
 
   def __eq__(self, aOther):
     return self.mConfigFilePath == aOther.getConfigFilePath()
+
+  def __contains__(self, aSection):
+    if isinstance(aSection, Section):
+      for section in self.getTopLevelSections():
+        if aSection == section:
+          return True
+        if aSection in section:
+          return True
+
+    return False
+
+  def ensureConfigDirCreated(self, aConfigFilePath):
+    # TODO: If we intend to support msys at some later date, we should re-enable
+    #       this old code from JMozTools
+    #if isMsys():
+    #    # If we're on msys, then the config dir path
+    #    # should be C:\Users\<user>\...
+    #    appData = os.environ['APPDATA']
+    #    homeDir = os.path.split(appData)[0]
+    #    homeDir = os.path.split(homeDir)[0]
+    #    self.mConfigDirPath = os.path.join(homeDir, self.mConfigDirPath)
+
+    self.mConfigDirPath = os.path.dirname(aConfigFilePath)
+
+    if not os.path.exists(self.mConfigDirPath):
+        os.mkdir(self.mConfigDirPath);
+
+  def ensureConfigFileCreated(self, aConfigFilePath):
+    self.ensureConfigDirCreated(aConfigFilePath)
+    if not os.path.exists(self.mConfigFilePath):
+      domImpl = getDOMImplementation()
+      self.mConfigDocument = domImpl.createDocument('', 'Configuration', None)
+      self.writeDocumentToConfigFile()
 
   def getConfigFilePath(self):
     return self.mConfigFilePath
@@ -448,6 +455,7 @@ class Configurator:
         splitPath = invalidPath.split(".")
         tlSection = self.addSectionToConfig(splitPath[0])
         tlSection.createSubSectionByPath(".".join(splitPath[1:len(splitPath)]))
+    return self.getSectionByPath(aPath)
 
   def getOptionByPath(self, aOptionPath):
     global gLogger
@@ -492,25 +500,33 @@ class Configurator:
 
     return nextSection
 
-  def addSectionToConfig(self, aSectionName, aSectionParentName='Configuration'):
-   document = self.getDocument()
-   allElementsWithParentName = document.getElementsByTagName(aSectionParentName)
+  def getTopElement(self):
+    document = self.getDocument()
+    configElements = document.getElementsByTagName('Configuration')
+    return configElements[0]
 
-   for element in allElementsWithParentName:
-     childrenWithTag = element.getElementsByTagName(aSectionName)
-     if childrenWithTag.length > 0:
-       # Cowardly refuse to add another duplicate child element
-       continue
+  def addSection(self, aSectionName, aParentSection=None):
+    global gLogger
+    parentElement = None
+    if not aParentSection:
+      # Then this is a top-level section, and so it's xml parent
+      # should be the '<Configuration>' element.
+      parentElement = self.getTopElement()
+    else:
+      parentElement = aParentSection.getElement()
 
-     newSectionElement = document.createElement(aSectionName)
-     element.appendChild(newSectionElement)
-
-   self.writeDocumentToConfigFile()
-   self.repopulateTopLevelSections()
-   return self.getTopLevelSection(aSectionName)
+    gLogger.debug("Parent element: " + str(parentElement))
+    newSection = Section(self, aSectionName, aParentSection)
+    newSection.invalidateElement()
+    newSectionElement = newSection.getElement()
+    gLogger.debug("New Section Element: " + str(newSectionElement))
+    parentElement.appendChild(newSectionElement)
+    gLogger.debug("New section's parent element: " + newSectionElement.parentNode.tagName)
+    self.__mTopLevelSections.append(newSection)
+    self.writeDocumentToConfigFile()
+    return self.getTopLevelSection(aSectionName)
 
   def getTopLevelSections(self):
-    self.repopulateTopLevelSections()
     return self.__mTopLevelSections
 
   def getTopLevelSection(self, aSectionName):
@@ -534,15 +550,6 @@ class Configurator:
 
   # === [ Private API ] =======================================================
 
-  def repopulateTopLevelSections(self):
-    global gLogger
-    gLogger.debug("Repopulating top level sections")
-    self.__mTopLevelSections= []
-    rootElement = self.getDocument().documentElement
-    for child in rootElement.childNodes:
-      childSection = Section(self, child.tagName, None, child)
-      self.__mTopLevelSections.append(childSection)
-
   def getDocument(self):
     if not self.mConfigDocument:
       configFile = self.getConfigFile()
@@ -560,9 +567,29 @@ class Configurator:
         os.remove(configFile)
         return self.getDocument()
 
-      self.repopulateTopLevelSections()
-
     return self.mConfigDocument
+
+  def isWindows(self):
+    if os.name == 'nt':
+      return True
+
+    return False
+
+  def isUnix(self):
+    if os.name == 'posix':
+      return True
+
+    return False
+
+  def isMsys(self):
+    try:
+      ostype = os.environ['OSTYPE']
+      if ostype == 'msys':
+        return True
+    except KeyError:
+      if 'MSYSTEM' in os.environ.keys():
+        return True
+    return False
 
 ## =============== USER INTERFACE SECTION ===============
 
