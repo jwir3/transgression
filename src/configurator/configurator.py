@@ -60,8 +60,6 @@ class Option:
     self.__mName = aName
     self.__mValue = aValue
     self.__mParentSection = aParentSection
-    # if not self.findXMLElement():
-    #   self.addElementToDocument()
 
   def __str__(self):
     return "[Option: " + self.__mName + "=" + self.__mValue + "]"
@@ -126,19 +124,16 @@ class Section:
   __mAttrList = []
 
   def __init__(self, aParentConfigurator, aName, aParent, aAttrs={}):
+    global gLogger
     self.__mName = aName
     self.__mParentSection = aParent
     self.__mParentConfigurator = aParentConfigurator
+    self.__mOptionsList = []
+    self.__mSubSectionList = []
+    self.__mAttrList = []
 
     for attributeName in aAttrs.keys():
       self.__mAttrList.append(Attribute(self, attributeName, aAttrs[attributeName]))
-
-    # if aConfigXMLElement:
-    #   # If this isn't the case, then we're in a sort of manual mode.
-    #   # Most likely, this is for testing so just continue without
-    #   # inferring structure.
-    #   self.repopulateOptionsList()
-    #   self.repopulateSubSectionList()
 
   def __str__(self):
     return "Section: <" + self.__mName + ">"
@@ -148,7 +143,6 @@ class Section:
     parentsEqual = self.__mParentConfigurator == aOther.getConfigurator()
     pathsEqual = self.getPath() == aOther.getPath()
 
-    #subSectionsEqual = self.subSectionsEqual(aOther)
     optionsEqual = self.optionsEqual(aOther)
     attrsEqual = self.attributesEqual(aOther)
 
@@ -234,6 +228,10 @@ class Section:
       parentElement.appendChild(newSectionElement)
       gLogger.debug("getElement(): element - " + str(newSectionElement))
 
+      # Add our attributes to the XML
+      for attribute in self.getAttributes():
+        newSectionElement.setAttribute(attribute.getName(), attribute.getValue())
+
       self.__mElement = newSectionElement
 
     return self.__mElement
@@ -246,17 +244,29 @@ class Section:
     return len(self.__mOptionsList) != 0
 
   def hasSubSections(self):
-    self.repopulateSubSectionList()
+    #self.repopulateSubSectionList()
     return len(self.__mSubSectionList) != 0
+
+  def hasAttributes(self):
+    return len(self.getAttributes()) != 0
 
   def isEmpty(self):
     return not self.hasOptions() and not self.hasSubSections()
 
+  def addSubSection(self, aSubSectionName):
+    # Create the new section XML element
+    newSection = Section(self.__mParentConfigurator, aSubSectionName, self)
+    self.getSubSections().append(newSection)
+    return newSection
+
   def createSubSectionByPath(self, aPath):
+    global gLogger
     splitPath = aPath.split(".")
     nextSection = self
     for nextSectionName in splitPath:
+      gLogger.debug("Adding new subsection: " + nextSectionName)
       nextSection = nextSection.addSubSection(nextSectionName)
+      gLogger.debug("Next section has options? " + str(nextSection.hasOptions()))
     self.triggerXMLUpdate()
 
   def getAttributeByName(self, aAttributeName):
@@ -267,6 +277,7 @@ class Section:
 
   def addAttribute(self, aAttributeName, aAttributeValue):
     attribute = Attribute(self, aAttributeName, aAttributeValue)
+    self.getAttributes().append(attribute)
     self.triggerXMLUpdate()
 
   def setOption(self, aOptionName, aOptionValue):
@@ -286,39 +297,11 @@ class Section:
     # #       to wait to coalesce XML updates.
     self.__mParentConfigurator.writeDocumentToConfigFile()
 
-  def addSubSection(self, aSubSectionName):
-    # Create the new section XML element
-    newSection = Section(self.__mParentConfigurator, aSubSectionName, self)
-    self.getSubSections().append(newSection)
-    return newSection
-
   def getOptions(self):
     return self.__mOptionsList
 
   def getSubSections(self):
     return self.__mSubSectionList
-
-  # def repopulateSubSectionList(self):
-  #   self.__mSubSectionList = []
-  #   for childNode in self.__mElement.childNodes:
-  #     if childNode.tagName != 'option':
-  #       sectionName = childNode.tagName
-  #       newSection = Section(self.__mParentConfigurator, sectionName, self, childNode)
-  #       self.__mSubSectionList.append(newSection)
-
-  # def repopulateOptionsList(self):
-  #   global gLogger
-  #   gLogger.debug("Options list being repopulated for: " + self.getName())
-  #   self.__mOptionsList = []
-  #   for childNode in self.__mElement.childNodes:
-  #     if childNode.tagName == 'option':
-  #       optionName = childNode.getAttribute('name')
-  #       if childNode.firstChild:
-  #         optionValue = childNode.firstChild.data
-  #       else:
-  #         optionValue = ""
-  #       newOption = Option(optionName, optionValue, self)
-  #       self.__mOptionsList.append(newOption)
 
   def getSubSection(self, aSectionName):
     for section in self.__mSubSectionList:
@@ -436,7 +419,7 @@ class Configurator:
     gLogger.debug("Section path: " + sectionPath)
     self.addSectionByPath(sectionPath)
     section = self.getSectionByPath(sectionPath)
-    section.setOption(optionName, aOptionValue)
+    return section.setOption(optionName, aOptionValue)
 
   def addSectionByPath(self, aPath):
     global gLogger
@@ -453,7 +436,7 @@ class Configurator:
         validSection.createSubSectionByPath(invalidPath)
       else:
         splitPath = invalidPath.split(".")
-        tlSection = self.addSectionToConfig(splitPath[0])
+        tlSection = self.addSection(splitPath[0])
         tlSection.createSubSectionByPath(".".join(splitPath[1:len(splitPath)]))
     return self.getSectionByPath(aPath)
 
