@@ -489,6 +489,7 @@ class Configurator:
       raise ValueError("Cannot have an empty path")
     i = 0
     nextSectionName = splitPath[i]
+    (nextSectionName, attributes) = self.__splitSectionAndAttributes(nextSectionName)
     gLogger.debug("Next path to search for: " + nextSectionName)
     nextSection = self.getTopLevelSection(nextSectionName)
     gLogger.debug("Found nextSection: " + str(nextSection))
@@ -507,6 +508,16 @@ class Configurator:
       i = i + 1
 
     return nextSection
+
+  def __splitSectionAndAttributes(self, aSectionName):
+    # If we don't have a set of enclosing brackets, then the
+    # section name is just what was given.
+    if "[" in aSectionName and "]" in aSectionName:
+      firstIndex = aSectionName.find("[")
+      secondIndex = aSectionName.find("]")
+      return (aSectionName[0:firstIndex], aSectionName[firstIndex:secondIndex+1])
+
+    return (aSectionName, None)
 
   def getTopElement(self):
     document = self.getDocument()

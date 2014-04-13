@@ -147,7 +147,6 @@ class ConfiguratorTest(unittest.TestCase):
     self.assertTrue(singleOption in newSection)
 
   def test_add_section_to_section(self):
-
     newSection = self.gConfig.addSection("UND")
     subsect = newSection.addSubSection("Hockey")
     self.assertTrue(subsect)
@@ -158,11 +157,18 @@ class ConfiguratorTest(unittest.TestCase):
     self.assertFalse(anotherSection in newSection)
 
   def test_add_section(self):
-
     newSection = self.gConfig.addSection('Scott')
     tlSections = self.gConfig.getTopLevelSections()
     self.assertTrue(newSection in tlSections)
     self.assertTrue(newSection)
 
+  def test_split_section_and_attributes(self):
+    sectionName = "SomeSection"
+    attributes = '[AttributeA=something]'
+    totalSection = sectionName + attributes
+    (resultSection, resultAttributes) = self.gConfig._Configurator__splitSectionAndAttributes(totalSection)
+    self.assertEquals(sectionName, resultSection)
+    self.assertEquals(attributes, resultAttributes)
+    
 if __name__ == '__main__':
   unittest.main()
