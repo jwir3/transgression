@@ -519,6 +519,27 @@ class Configurator:
 
     return (aSectionName, None)
 
+  def __splitAttributesString(self, aAttributesString):
+    finalAttributesDict = {}
+
+    # Remove braces
+    workingAttributes = aAttributesString[1:len(aAttributesString)-1]
+
+    # Each attribute should be delimited by a comma
+    attributePairs = workingAttributes.split(",")
+
+    for singleAttributeKeyValue in attributePairs:
+      # Remove any quotes
+      singleAttributeKeyValue = singleAttributeKeyValue.replace('"', '')
+
+      # Split each of the pairs based on the equals sign
+      equalsPosition = singleAttributeKeyValue.find('=')
+      key = singleAttributeKeyValue[0:equalsPosition]
+      value = singleAttributeKeyValue[equalsPosition+1:len(singleAttributeKeyValue)]
+      finalAttributesDict[key] = value
+      
+    return finalAttributesDict
+
   def getTopElement(self):
     document = self.getDocument()
     configElements = document.getElementsByTagName('Configuration')

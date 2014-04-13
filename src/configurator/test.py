@@ -162,6 +162,14 @@ class ConfiguratorTest(unittest.TestCase):
     self.assertTrue(newSection in tlSections)
     self.assertTrue(newSection)
 
+  def test_split_attributes_string(self):
+    attributesString = '[Alpha=One,Beta="Two",Gamma=William Shakespeare]'
+    attrs = self.gConfig._Configurator__splitAttributesString(attributesString)
+    self.assertTrue('Alpha' in attrs.keys())
+    self.assertEquals('One', attrs['Alpha'])
+    self.assertEquals('Two', attrs['Beta'])
+    self.assertEquals('William Shakespeare', attrs['Gamma'])
+
   def test_split_section_and_attributes(self):
     sectionName = "SomeSection"
     attributes = '[AttributeA=something]'
@@ -169,6 +177,6 @@ class ConfiguratorTest(unittest.TestCase):
     (resultSection, resultAttributes) = self.gConfig._Configurator__splitSectionAndAttributes(totalSection)
     self.assertEquals(sectionName, resultSection)
     self.assertEquals(attributes, resultAttributes)
-    
+
 if __name__ == '__main__':
   unittest.main()
