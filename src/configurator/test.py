@@ -164,7 +164,7 @@ class ConfiguratorTest(unittest.TestCase):
 
   def test_split_attributes_string(self):
     attributesString = '[Alpha=One,Beta="Two",Gamma=William Shakespeare]'
-    attrs = self.gConfig._Configurator__splitAttributesString(attributesString)
+    attrs = Configurator.splitAttributesString(attributesString)
     self.assertTrue('Alpha' in attrs.keys())
     self.assertEquals('One', attrs['Alpha'])
     self.assertEquals('Two', attrs['Beta'])
@@ -174,9 +174,21 @@ class ConfiguratorTest(unittest.TestCase):
     sectionName = "SomeSection"
     attributes = '[AttributeA=something]'
     totalSection = sectionName + attributes
-    (resultSection, resultAttributes) = self.gConfig._Configurator__splitSectionAndAttributes(totalSection)
+    (resultSection, resultAttributes) = Configurator.splitSectionAndAttributes(totalSection)
     self.assertEquals(sectionName, resultSection)
     self.assertEquals(attributes, resultAttributes)
+
+  def test_add_subsection_with_attributes(self):
+    section = Section(self.gConfig, 'Fruit', None)
+    subsection = section.addSubSection('Banana[color="yellow"]')
+    xmlString = '<?xml version="1.0" ?><Configuration><Fruit><Banana color="yellow"/></Fruit></Configuration>'
+
+    self.assertTrue(subsection.hasAttributes())
+    self.assertTrue(section.hasSubSections())
+    self.assertFalse(subsection.hasSubSections())
+    self.assertEquals('Banana', subsection.getName())
+    self.assertEquals('yellow', subsection.getAttributeByName('color').getValue())
+    self.assertEquals(xmlString, self.gConfig.getDocument().toxml())
 
 if __name__ == '__main__':
   unittest.main()

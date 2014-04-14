@@ -82,26 +82,6 @@ class Option:
     self.__mValue = aValue
     self.updateXML()
 
-  # def findXMLElement(self):
-  #   parentElement = self.__mParentSection.getElement()
-  #   for childNode in parentElement.childNodes:
-  #     if childNode.tagName == 'option' and childNode.getAttribute('name') == self.__mName:
-  #       self.__mElement = childNode
-  #
-  #   return self.__mElement
-  #
-  # def updateXML(self):
-  #   newElement = self.createNewXMLElement()
-  #   self.__mElement.parentNode.replaceChild(newElement, self.__mElement)
-  #   self.__mElement = newElement
-  #   self.__mParentSection.triggerXMLUpdate()
-
-  # def addElementToDocument(self):
-  #   newElement = self.createNewXMLElement()
-  #   self.__mElement = newElement
-  #   self.__mParentSection.getElement().appendChild(self.__mElement)
-  #   self.__mParentSection.triggerXMLUpdate()
-
   def createNewXMLElement(self):
     document = self.__mParentSection.getElement().ownerDocument
     newElement = document.createElement('option')
@@ -158,10 +138,12 @@ class Section:
 
     return False
 
+  # TODO: Make private.
   def attributesEqual(self, aOther):
     numAttrsEqual = len(self.getAttributes()) == len(aOther.getAttributes())
     return numAttrsEqual
 
+  # TODO: Make private.
   def subSectionsEqual(self, aOther):
     subSectionsSelf = self.getSubSections()
     subSectionsOther = aOther.getSubSections()
@@ -174,6 +156,7 @@ class Section:
         i = i + 1
     return subSectionsEqual
 
+  # TODO: Make private.
   def optionsEqual(self, aOther):
     optionsSelf = self.getOptions()
     optionsOther = aOther.getOptions()
@@ -254,9 +237,13 @@ class Section:
     return not self.hasOptions() and not self.hasSubSections()
 
   def addSubSection(self, aSubSectionName):
-    # Create the new section XML element
-    newSection = Section(self.__mParentConfigurator, aSubSectionName, self)
+    global gLogger
+    # Split out the attributes and section name
+    (sectionName, attribString) = Configurator.splitSectionAndAttributes(aSubSectionName)
+    attribDict = Configurator.splitAttributesString(attribString)
+    newSection = Section(self.__mParentConfigurator, sectionName, self, attribDict)
     self.getSubSections().append(newSection)
+    self.triggerXMLUpdate()
     return newSection
 
   def containsAttributes(self, aAttrs):
@@ -299,6 +286,10 @@ class Section:
         return attribute
     return None
 
+  def addAttributes(self, aAttribDict):
+    for attribKey in aAttribDict:
+      self.addAttribute(attribKey, aAttribDict[aAttribKey])
+
   def addAttribute(self, aAttributeName, aAttributeValue):
     attribute = Attribute(self, aAttributeName, aAttributeValue)
     self.getAttributes().append(attribute)
@@ -316,10 +307,8 @@ class Section:
     # Update our XML document to contain this particular section.
     element = self.getElement()
 
-    # # Write the XML document out
-    # # TODO: We should add a flag that doesn't do this if we're going
-    # #       to wait to coalesce XML updates.
-    self.__mParentConfigurator.writeDocumentToConfigFile()
+    for section in self.getSubSections():
+      section.triggerXMLUpdate()
 
   def getOptions(self):
     return self.__mOptionsList
@@ -328,8 +317,10 @@ class Section:
     return self.__mSubSectionList
 
   def getSubSection(self, aSectionName):
+    # Split the section name out from the attributes
+    (sectionName, attributesString) = Configurator.splitSectionAndAttributes(aSectionName)
     for section in self.__mSubSectionList:
-      if section.getName() == aSectionName:
+      if section.getName() == sectionName:
         return section
     return None
 
@@ -489,7 +480,7 @@ class Configurator:
       raise ValueError("Cannot have an empty path")
     i = 0
     nextSectionName = splitPath[i]
-    (nextSectionName, attributes) = self.__splitSectionAndAttributes(nextSectionName)
+    (nextSectionName, attributes) = Configurator.splitSectionAndAttributes(nextSectionName)
     gLogger.debug("Next path to search for: " + nextSectionName)
     nextSection = self.getTopLevelSection(nextSectionName)
     gLogger.debug("Found nextSection: " + str(nextSection))
@@ -509,7 +500,8 @@ class Configurator:
 
     return nextSection
 
-  def __splitSectionAndAttributes(self, aSectionName):
+  @staticmethod
+  def splitSectionAndAttributes(aSectionName):
     # If we don't have a set of enclosing brackets, then the
     # section name is just what was given.
     if "[" in aSectionName and "]" in aSectionName:
@@ -519,7 +511,12 @@ class Configurator:
 
     return (aSectionName, None)
 
-  def __splitAttributesString(self, aAttributesString):
+  @staticmethod
+  def splitAttributesString(aAttributesString):
+    if not aAttributesString:
+      # Nothing to do
+      return {}
+
     finalAttributesDict = {}
 
     # Remove braces
@@ -537,7 +534,7 @@ class Configurator:
       key = singleAttributeKeyValue[0:equalsPosition]
       value = singleAttributeKeyValue[equalsPosition+1:len(singleAttributeKeyValue)]
       finalAttributesDict[key] = value
-      
+
     return finalAttributesDict
 
   def getTopElement(self):
@@ -556,7 +553,16 @@ class Configurator:
       parentElement = aParentSection.getElement()
 
     gLogger.debug("Parent element: " + str(parentElement))
-    newSection = Section(self, aSectionName, aParentSection)
+
+    # We split out any potential attributes from this section
+    # string, and use them later.
+    (sectionName, attribString) = Configurator.splitSectionAndAttributes(aSectionName)
+    newSection = Section(self, sectionName, aParentSection)
+
+    # Add the attributes to the new section
+    attribDict = Configurator.splitAttributesString(attribString)
+    newSection.addAttributes(attribDict)
+
     newSection.invalidateElement()
     newSectionElement = newSection.getElement()
     gLogger.debug("New Section Element: " + str(newSectionElement))
@@ -564,7 +570,7 @@ class Configurator:
     gLogger.debug("New section's parent element: " + newSectionElement.parentNode.tagName)
     self.__mTopLevelSections.append(newSection)
     self.writeDocumentToConfigFile()
-    return self.getTopLevelSection(aSectionName)
+    return newSection
 
   def getTopLevelSections(self):
     return self.__mTopLevelSections
@@ -575,6 +581,8 @@ class Configurator:
         return topSection
     return None
 
+  # TODO: This probably needs to be reworked to be in line with new logic
+  #       of how we construct our XML documents.
   def writeDocumentToConfigFile(self):
     document = self.mConfigDocument
     configFilePath = self.mConfigFilePath
