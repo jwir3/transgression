@@ -1,10 +1,10 @@
 #class Transgression:
-from configurator.configurator import Configurator
+from configurator.core import Configurator
 import os.path
 import paramiko
 from time import sleep
 import getpass
-from prettylogger.prettylogger import PrettyLogger
+from prettylogger.core import PrettyLogger
 from ui import showMenu
 
 gLogger = None
