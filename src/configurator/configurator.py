@@ -288,7 +288,7 @@ class Section:
 
   def addAttributes(self, aAttribDict):
     for attribKey in aAttribDict:
-      self.addAttribute(attribKey, aAttribDict[aAttribKey])
+      self.addAttribute(attribKey, aAttribDict[attribKey])
 
   def addAttribute(self, aAttributeName, aAttributeValue):
     attribute = Attribute(self, aAttributeName, aAttributeValue)
@@ -317,11 +317,21 @@ class Section:
     return self.__mSubSectionList
 
   def getSubSection(self, aSectionName):
+    global gLogger
+
     # Split the section name out from the attributes
     (sectionName, attributesString) = Configurator.splitSectionAndAttributes(aSectionName)
-    for section in self.__mSubSectionList:
-      if section.getName() == sectionName:
-        return section
+    gLogger.debug("***** DEBUG_jwir3: Section Name: " + sectionName + ", attributesString: " + str(attributesString))
+    attribDict = Configurator.splitAttributesString(attributesString)
+    gLogger.debug("***** DEBUG_jwir3: AttribDict: " + str(attribDict))
+    gLogger.debug("***** DEBUG_jwir3: Subsections: " + str(self.getSubSections()))
+    for section in self.getSubSections():
+      if not attribDict:
+        if section.getName() == sectionName:
+          return section
+      else:
+        if section.getName() == sectionName and section.containsAttributes(attribDict):
+          return section
     return None
 
   def getOption(self, aOptionName):
@@ -481,8 +491,9 @@ class Configurator:
     i = 0
     nextSectionName = splitPath[i]
     (nextSectionName, attributes) = Configurator.splitSectionAndAttributes(nextSectionName)
+    attribDict = Configurator.splitAttributesString(attributes)
     gLogger.debug("Next path to search for: " + nextSectionName)
-    nextSection = self.getTopLevelSection(nextSectionName)
+    nextSection = self.getTopLevelSection(nextSectionName, attribDict)
     gLogger.debug("Found nextSection: " + str(nextSection))
     if not nextSection:
       raise InvalidPathException('section', '', aSectionPath)
@@ -557,6 +568,7 @@ class Configurator:
     # We split out any potential attributes from this section
     # string, and use them later.
     (sectionName, attribString) = Configurator.splitSectionAndAttributes(aSectionName)
+    gLogger.debug("***** DEBUG_jwir3: Saw sectionName: " + sectionName + " and attribString: " + str(attribString))
     newSection = Section(self, sectionName, aParentSection)
 
     # Add the attributes to the new section
@@ -575,10 +587,14 @@ class Configurator:
   def getTopLevelSections(self):
     return self.__mTopLevelSections
 
-  def getTopLevelSection(self, aSectionName):
+  def getTopLevelSection(self, aSectionName, aAttributes=None):
     for topSection in self.getTopLevelSections():
-      if topSection.getName() == aSectionName:
-        return topSection
+      if aAttributes:
+        if topSection.getName() == aSectionName and topSection.containsAttributes(aAttributes):
+          return topSection
+      else:
+        if topSection.getName() == aSectionName:
+          return topSection
     return None
 
   # TODO: This probably needs to be reworked to be in line with new logic

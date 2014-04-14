@@ -190,5 +190,31 @@ class ConfiguratorTest(unittest.TestCase):
     self.assertEquals('yellow', subsection.getAttributeByName('color').getValue())
     self.assertEquals(xmlString, self.gConfig.getDocument().toxml())
 
+  def test_get_top_level_section_by_path_with_attributes(self):
+    baseSection1 = self.gConfig.addSection('Tree[color="blue"]')
+    baseSection2 = self.gConfig.addSection('Tree[color="green"]')
+
+    foundSection = self.gConfig.getSectionByPath('Tree[color="green"]')
+
+    self.assertTrue(baseSection1)
+    self.assertTrue(baseSection2)
+    self.assertNotEquals(baseSection1, baseSection2)
+    self.assertNotEquals(baseSection1, foundSection)
+    self.assertEquals(baseSection2, foundSection)
+
+  def test_get_section_by_path_with_attributes(self):
+    baseSection = self.gConfig.addSection('Tree')
+    subSection1 = baseSection.addSubSection('Banana[color="green"]')
+    subSection2 = baseSection.addSubSection('Banana[color="yellow"]')
+
+    foundSection = self.gConfig.getSectionByPath('Tree.Banana[color="yellow"]')
+
+    self.assertTrue(foundSection)
+    self.assertNotEquals(subSection1, foundSection)
+    self.assertEquals(subSection2, foundSection)
+
+    # No specifics should return all bananas
+    #nextFoundSection = self.gConfig.getSectionByPath('Tree.Banana')
+
 if __name__ == '__main__':
   unittest.main()
