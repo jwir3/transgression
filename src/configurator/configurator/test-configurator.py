@@ -1,9 +1,9 @@
 import unittest
-from configurator import Configurator
-from configurator import Section
+from configurator.core import Configurator
+from configurator.core import Section
 import os.path
 import os
-from prettylogger.prettylogger import PrettyLogger
+from prettylogger.core import PrettyLogger
 
 class ConfiguratorTest(unittest.TestCase):
 
