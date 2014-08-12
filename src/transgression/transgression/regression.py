@@ -41,7 +41,7 @@ import subprocess
 from optparse import OptionParser
 
 
-from runnightly import NightlyRunner
+from runner import TransgressionRunner
 from utils import strsplit, get_date, increment_day
 
 class Bisector(object):
@@ -98,7 +98,7 @@ class Bisector(object):
 
     def bisect(self, goodDate, badDate, skips=0):
         midDate = goodDate + (badDate - goodDate) / 2
-        
+
         midDate += datetime.timedelta(days=skips)
 
         if midDate == badDate or midDate == goodDate:
@@ -160,31 +160,32 @@ class Bisector(object):
 
 def cli():
     parser = OptionParser()
-    parser.add_option("-b", "--bad", dest="bad_date",help="first known bad nightly build, default is today",
+    parser.add_option("-b", "--bad", dest="bad_date",help="first known bad build of application, default is today",
                       metavar="YYYY-MM-DD", default=str(datetime.date.today()))
-    parser.add_option("-g", "--good", dest="good_date",help="last known good nightly build",
+    parser.add_option("-g", "--good", dest="good_date",help="last known good build of application",
                       metavar="YYYY-MM-DD", default=None)
-    parser.add_option("-e", "--addons", dest="addons",help="list of addons to install", metavar="PATH1,PATH2", default="")
-    parser.add_option("-p", "--profile", dest="profile", help="profile to use with nightlies", metavar="PATH")
+    # parser.add_option("-e", "--addons", dest="addons",help="list of addons to install", metavar="PATH1,PATH2", default="")
+    # parser.add_option("-p", "--profile", dest="profile", help="profile to use with nightlies", metavar="PATH")
     parser.add_option("-a", "--args", dest="cmdargs", help="command-line arguments to pass to the application",
                       metavar="ARG1,ARG2", default="")
-    parser.add_option("-n", "--app", dest="app", help="application name (firefox, fennec or thunderbird)",
-                      metavar="[firefox|fennec|thunderbird]", default="firefox")
-    parser.add_option("-r", "--repo", dest="repo_name", help="repository name on ftp.mozilla.org",
-                      metavar="[tracemonkey|mozilla-1.9.2]", default=None)
+    parser.add_option("-n", "--app", dest="app", help="application name", default="firefox")
+    parser.add_option("-r", "--repo", dest="repo_name", help="binary repository location",
+                      metavar="[repo location]", default=None)
+    parser.add_option("-t", "--type", dest="repo_type", help="binary repository type",
+                      metavar="[ftp]", default="ftp")
     (options, args) = parser.parse_args()
 
-    addons = strsplit(options.addons, ",")
+    # addons = strsplit(options.addons, ",")
     cmdargs = strsplit(options.cmdargs, ",")
 
     if not options.good_date:
         options.good_date = "2009-01-01"
         print "No 'good' date specified, using " + options.good_date
 
-    runner = NightlyRunner(appname=options.app, addons=addons, repo_name=options.repo_name,
-                           profile=options.profile, cmdargs=cmdargs)
-    bisector = Bisector(runner, appname=options.app)
-    bisector.bisect(get_date(options.good_date), get_date(options.bad_date))
+    runner = TransgressionRunner(appname=options.app, repo_name=options.repo_name,
+                                 profile=options.profile, cmdargs=cmdargs)
+    # bisector = Bisector(runner, appname=options.app)
+    # bisector.bisect(get_date(options.good_date), get_date(options.bad_date))
 
 
 if __name__ == "__main__":

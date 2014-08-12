@@ -23,74 +23,97 @@ from BeautifulSoup import BeautifulSoup
 from mozInstall import MozInstaller
 from utils import strsplit, download_url, get_date, get_platform
 
-class Nightly(object):
-    def __init__(self, repo_name=None):
+class DebugBuild(object):
+    def __init__(self, repo_name=None, aBinaryNameConvention=None, aProcessNameConvention=None):
+        self.mBinaryNameConvention = aBinaryNameConvention
+        self.mProcessNameConvention = aProcessNameConvention
+        self.mRepoName = aRepoName
+        self.buildRegex = aBinaryNameConvention
+
         platform=get_platform()
-        if platform['name'] == "Windows":
-            if platform['bits'] == '64':
-                print "No nightly builds available for 64 bit Windows"
-                sys.exit()
-            self.buildRegex = ".*win32.zip"
-            self.processName = self.name + ".exe"
-            self.binary = "moznightlyapp/" + self.name + "/" + self.name + ".exe"
-        elif platform['name'] == "Linux":
-            self.processName = self.name + "-bin"
-            self.binary = "moznightlyapp/" + self.name + "/" + self.name
-            if platform['bits'] == '64':
-                self.buildRegex = ".*linux-x86_64.tar.bz2"
-            else:
-                self.buildRegex = ".*linux-i686.tar.bz2"
-        elif platform['name'] == "Mac":
-            self.buildRegex = ".*mac.*\.dmg"
-            self.processName = self.name + "-bin"
-            self.binary = "moznightlyapp/Mozilla.app/Contents/MacOS/" + self.name + "-bin"
+        # if platform['name'] == "Windows":
+        #     if platform['bits'] == '64':
+        #         print "No debug builds available for 64 bit Windows"
+        #         sys.exit()
+        #     self.buildRegex = ".*win32.zip"
+        #     self.processName = self.name + ".exe"
+        #     self.binary = "transgressiondebugapp/" + self.name + "/" + self.name + ".exe"
+        # elif platform['name'] == "Linux":
+        #     self.processName = self.name + "-bin"
+        #     self.binary = "transgressiondebugapp/" + self.name + "/" + self.name
+        #     if platform['bits'] == '64':
+        #         self.buildRegex = ".*linux-x86_64.tar.bz2"
+        #     else:
+        #         self.buildRegex = ".*linux-i686.tar.bz2"
+        # if platform['name'] == "Mac":
+        #     self.buildRegex = ".*mac.*\.dmg"
+        #     self.processName = self.name + "-bin"
+        #     # Firefox on Mac would have the following build regex:
+        #     # Contents/Mozilla.app/MacOS/firefox-bin
+        #     self.binary = "transgressiondebugapp/Contents/MacOS/" + self.name
         self.repo_name = repo_name
         self._monthlinks = {}
         self.lastdest = None
 
     def cleanup(self):
-        rmtree('moznightlyapp')
+        rmtree('transgressiondebugapp')
         if self.lastdest:
             os.remove(self.lastdest)
 
     __del__ = cleanup
 
-    def download(self, date=datetime.date.today(), dest=None):
-        url = self.getBuildUrl(date)
-        if url:
-            if not dest:
-                dest = os.path.basename(url)
-            print "Downloading nightly from %s" % date
-            if self.lastdest:
-                os.remove(self.lastdest)
-            download_url(url, dest)
-            self.dest = self.lastdest = dest
-            return True
-        else:
-            return False
+    # def download(self, date=datetime.date.today(), dest=None):
+    #     url = self.getBuildUrl(date)
+    #     if url:
+    #         if not dest:
+    #             dest = os.path.basename(url)
+    #         print "Downloading nightly from %s" % date
+    #         if self.lastdest:
+    #             os.remove(self.lastdest)
+    #         download_url(url, dest)
+    #         self.dest = self.lastdest = dest
+    #         return True
+    #     else:
+    #         return False
+    #
+    # def install(self):
+    #     rmtree("moznightlyapp")
+    #     subprocess._cleanup = lambda : None # mikeal's fix for subprocess threading bug
+    #     MozInstaller(src=self.dest, dest="moznightlyapp", dest_app="Mozilla.app")
+    #     return True
+    #
+    # @staticmethod
+    # def urlLinks(url):
+    #     res = [] # do not return a generator but an array, so we can store it for later use
+    #
+    #     h = httplib2.Http();
+    #     resp, content = h.request(url, "GET")
+    #     if resp.status != 200:
+    #         return res
+    #
+    #     soup = BeautifulSoup(content)
+    #     for link in soup.findAll('a'):
+    #         res.append(link)
+    #     return res
 
-    def install(self):
-        rmtree("moznightlyapp")
-        subprocess._cleanup = lambda : None # mikeal's fix for subprocess threading bug
-        MozInstaller(src=self.dest, dest="moznightlyapp", dest_app="Mozilla.app")
-        return True
+    def constructBuildUrlFromData(self, aBaseUrl, aYear, aMonth, aDay, aApplicationName=None, aBuildId=None):
+      # What information do we need here?
+      # Base site (Given, with formatString content)
+      # Name of application (if not already given in above) - %name%
+      # Month(%month%), Day(%day%), Year of Application Build (%year%)
+      # Build Identifier String (%buildid%)
+      constructedUrl = aBaseUrl.replace("%year%", aYear)
+      constructedUrl = constructedUrl.replace("%day%", aDay)
+      constructedUrl = constructedUrl.replace("%month%", aMonth)
+      if aApplicationName:
+        constructedUrl = constructedUrl.replace("%name%", aApplicationName)
+      if aBuildId:
+        constructedUrl = constructedUrl.replace("%buildid%", aBuildId)
+      return constructedUrl
 
-    @staticmethod
-    def urlLinks(url):
-        res = [] # do not return a generator but an array, so we can store it for later use
-
-        h = httplib2.Http();
-        resp, content = h.request(url, "GET")
-        if resp.status != 200:
-            return res
-
-        soup = BeautifulSoup(content)
-        for link in soup.findAll('a'):
-            res.append(link)
-        return res
-
-    def getBuildUrl(self, date):
-        url = "http://ftp.mozilla.org/pub/mozilla.org/" + self.appName + "/nightly/"
+    def getBuildUrl(self, date, aBaseLocation):
+        # url = "http://ftp.mozilla.org/pub/mozilla.org/" + self.appName + "/nightly/"
+        url = aBaseLocation
         year = str(date.year)
         month = "%02d" % date.month
         day = "%02d" % date.day
@@ -147,7 +170,16 @@ class Nightly(object):
     def wait(self):
         self.runner.wait()
 
-class ThunderbirdNightly(Nightly):
+class Application(DebugBuild):
+  # What each of the above specific versions provides is a way
+  # to specify:
+  # a) binary naming convention
+  # b) process name/application naming convention
+
+  def __init__(self, aRepoName=None, aBinaryNameConvention=None, aProcessNameConvention=None):
+    DebugBuild.__init__(aRepoName, aNameConvention)
+
+class ThunderbirdDebugBuild(DebugBuild):
     appName = 'thunderbird'
     name = 'thunderbird'
     profileClass = ThunderbirdProfile
@@ -169,7 +201,7 @@ class ThunderbirdNightly(Nightly):
             return "comm-central"
 
 
-class FirefoxNightly(Nightly):
+class FirefoxDebugBuild(DebugBuild):
     appName = 'firefox'
     name = 'firefox'
     profileClass = FirefoxProfile
@@ -180,13 +212,13 @@ class FirefoxNightly(Nightly):
         else:
             return "mozilla-central"
 
-class FennecNightly(Nightly):
+class FennecDebugBuild(DebugBuild):
     appName = 'mobile'
     name = 'fennec'
     profileClass = FirefoxProfile
 
     def __init__(self, repo_name=None):
-        Nightly.__init__(self, repo_name)
+        DebugBuild.__init__(self, repo_name)
         self.buildRegex = 'fennec-.*\.apk'
         self.processName = 'org.mozilla.fennec'
         self.binary = 'org.mozilla.fennec/.App'
@@ -211,23 +243,20 @@ class FennecNightly(Nightly):
         # adb shell run-as org.mozilla.fennec kill $PID
         return True
 
-class NightlyRunner(object):
-    apps = {'thunderbird': ThunderbirdNightly,
-            'fennec': FennecNightly,
-            'firefox': FirefoxNightly}
+class TransgressionRunner(object):
+    apps = {'thunderbird': ThunderbirdDebugBuild,
+            'fennec': FennecDebugBuild,
+            'firefox': FirefoxDebugBuild}
 
-    def __init__(self, addons=None, appname="firefox", repo_name=None,
-                 profile=None, cmdargs=()):
+    def __init__(self, appname="firefox", repo_name=None, cmdargs=()):
         self.app = self.apps[appname](repo_name=repo_name)
-        self.addons = addons
-        self.profile = profile
         self.cmdargs = list(cmdargs)
 
     def install(self, date=datetime.date.today()):
         if not self.app.download(date=date):
-            print "Could not find nightly from %s" % date
+            print "Could not find application from %s" % date
             return False # download failed
-        print "Installing nightly"
+        print "Installing application"
         return self.app.install()
 
     def start(self, date=datetime.date.today()):
@@ -251,30 +280,29 @@ class NightlyRunner(object):
         return self.app.getAppInfo()
 
 def cli(args=sys.argv[1:]):
-    """moznightly command line entry point"""
+    """transgression command line entry point"""
 
     # parse command line options
     parser = OptionParser()
-    parser.add_option("-d", "--date", dest="date", help="date of the nightly",
+    parser.add_option("-d", "--date", dest="date", help="date of the application",
                       metavar="YYYY-MM-DD", default=str(datetime.date.today()))
-    parser.add_option("-a", "--addons", dest="addons",
-                      help="list of addons to install",
-                      metavar="PATH1,PATH2")
-    parser.add_option("-p", "--profile", dest="profile", help="path to profile to user", metavar="PATH")
-    parser.add_option("-n", "--app", dest="app", help="application name",
-                      type="choice",
-                      metavar="[%s]" % "|".join(NightlyRunner.apps.keys()),
-                      choices=NightlyRunner.apps.keys(),
-                      default="firefox")
-    parser.add_option("-r", "--repo", dest="repo_name", help="repository name on ftp.mozilla.org",
-                      metavar="[tracemonkey|mozilla-1.9.2]", default=None)
+    # parser.add_option("-a", "--addons", dest="addons",
+    #                   help="list of addons to install",
+    #                   metavar="PATH1,PATH2")
+    # parser.add_option("-p", "--profile", dest="profile", help="path to profile to user", metavar="PATH")
+    # parser.add_option("-n", "--app", dest="app", help="application name",
+    #                   type="choice",
+    #                   metavar="[%s]" % "|".join(TransgressionRunner.apps.keys()),
+    #                   choices=TransgressionRunner.apps.keys(),
+    #                   default="firefox")
+    parser.add_option("-r", "--repo", dest="repo_name", help="binary repository location",
+                      metavar="[repo location]", default=None)
     options, args = parser.parse_args(args)
     # XXX https://github.com/mozilla/mozregression/issues/50
     addons = strsplit(options.addons or "", ",")
 
-    # run nightly
-    runner = NightlyRunner(appname=options.app, addons=addons,
-                           profile=options.profile, repo_name=options.repo_name)
+    # run application
+    runner = TransgressionRunner(appname=options.app, repo_name=options.repo_name)
     runner.start(get_date(options.date))
     try:
         runner.wait()
