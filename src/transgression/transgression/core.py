@@ -1,11 +1,11 @@
-#class Transgression:
-from configurator.core import Configurator
 import os.path
 import paramiko
 from time import sleep
 import getpass
 from prettylogger.core import PrettyLogger
 from ui import showMenu
+import json
+import config
 
 gLogger = None
 gBinTypeSelected = None
@@ -158,6 +158,10 @@ def getListOfBinaries(aConfigurator):
 def setupRegressionTest(aProgramConfig):
   print("About to regression test " + aProgramConfig.getName())
 
+def loadConfigFromJsonFile(aPath):
+  configString = open(aPath, 'r').read()
+  return json.loads(configString, object_hook=config.config_decoder)
+
 def main():
   global gLogger
 
@@ -169,7 +173,7 @@ def main():
 
   try:
     # Check to make sure we have a config file, or create one
-    config = Configurator(os.path.join('.transgression', 'config.xml'), aDebugOutput=DEBUG)
+    # config = loadConfigFromJsonFile(os.path.join('.transgression', 'config.xml'), aDebugOutput=DEBUG)
 
     # Configuration should include at least one binary
     try:
