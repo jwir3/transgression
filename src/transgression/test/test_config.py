@@ -29,6 +29,11 @@ class ConfigTest(unittest.TestCase):
     self.assertEquals('sftp', configObj.getApplication('testApp').getPlatformConfiguration('windows').getBinaryRepository().getProtocol())
     self.assertEquals('www.google.com', configObj.getApplication('testApp').getPlatformConfiguration('windows').getBinaryRepository().getLocationFormatString())
 
+  # def test_add_application(self):
+  #   configObj = json.loads(self.mJsonString, object_hook=config.config_decoder)
+  #   platformConfigDict = { 'windows' : { 'firstBinaryDate' : '2010-01-01', 'processName' : 'Jingit-bin', 'binaryRepository' : { 'protocol' : 'sftp', 'location': 'www.google.com'}}}
+  #   configObj.addApplication('WokkaWokka', platformConfigDict)
+
   def test_json_encoding(self):
     configObj = json.loads(self.mJsonString, object_hook=config.config_decoder)
     app = configObj.getApplication('Jingit')

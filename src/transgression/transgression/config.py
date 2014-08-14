@@ -1,5 +1,6 @@
 import json
 import datetime
+import os
 
 class BinaryRepositoryEncoder(json.JSONEncoder):
 
@@ -126,6 +127,13 @@ class Config(object):
     platConfigDict = dict()
     platConfigDict['platformConfigurations'] = aPlatformConfigurationDict
     self.mApps[aApplicationName] = ApplicationConfig(aApplicationName, platConfigDict['platformConfigurations'])
+    self.__writeConfigToFile()
+
+  def __writeConfigToFile(self):
+    jsonString = json.dumps(self, cls=config.ConfigEncoder, indent=2)
+    fp = open(os.path.join(os.path.expanduser('~/.transgression'), 'config.json'), "w")
+    fp.write(jsonString)
+    fp.close()
 
 def config_decoder(aObject):
   if '__type__' in aObject and aObject['__type__'] == 'transgression-configuration':

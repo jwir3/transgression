@@ -172,7 +172,7 @@ def main():
   gLogger = PrettyLogger(True, DEBUG, VERBOSE)
 
   try:
-    # Check to make sure we have a config file, or create one
+    # Check to make sure we have a config file
     config = loadConfigFromJsonFile(os.path.join(os.path.expanduser('~/.transgression'), 'config.json'))
 
     # Configuration should include at least one binary
@@ -185,15 +185,17 @@ def main():
       program = applications[programKey]
       programListItem = (program.getAppName(), program)
       allPrograms.append(programListItem)
-      allPrograms.append(('Create New Binary', None))
+      # TODO: We don't currently support the ability to add new binaries
+      #       except via the config file.
+      # allPrograms.append(('Create New Binary', None))
       programChoice = showMenu(allPrograms)
-      if not programChoice:
-        gLogger.debug("Program choice was None")
-        programConfig = getInputForNewProgram()
-        if programConfig:
-          config.addApplication(programConfig)
+      # if not programChoice:
+      #   gLogger.debug("Program choice was None")
+      #   programConfig = getInputForNewProgram()
+      #   if programConfig:
+      #     config.addApplication(programConfig)
           # programConfig.writeToConfig(config)
-          programChoice = programConfig
+          # programChoice = programConfig
     # except Exception as e:
       # gLogger.debug("Exception occurred: " + str(e))
 
