@@ -1,10 +1,28 @@
 import json
 import datetime
 
+class BinaryRepository(object):
+  def __init__(self, aBinaryRepositoryDict):
+    self.initialize(aBinaryRepositoryDict['protocol'], aBinaryRepositoryDict['location'])
+
+  def initialize(self, aProtocol, aLocationString):
+    self.mLocationString = aLocationString
+    self.mProtocol = aProtocol
+
+  def getProtocol(self):
+    return self.mProtocol
+
+  def getLocationFormatString(self):
+    return self.mLocationString
+
 class PlatformConfiguration(object):
-  def __init__(self, aProcessName, aFirstBinDateString):
+  def __init__(self, aProcessName, aFirstBinDateString, aBinaryRepo):
     self.mProcessName = aProcessName
     self.mFirstBinaryDate = self.__processDate(aFirstBinDateString)
+    self.mBinaryRepo = aBinaryRepo
+
+  def getBinaryRepository(self):
+    return self.mBinaryRepo
 
   def getProcessName(self):
     return self.mProcessName
@@ -13,7 +31,8 @@ class PlatformConfiguration(object):
     return self.mFirstBinaryDate
 
   def __processDate(self, aDateString):
-    self.mFirstBinaryDate = datetime.strptime(aDateString, "%y-%m-%d")
+    firstBinaryDate = datetime.datetime.strptime(aDateString, "%Y-%m-%d")
+    return firstBinaryDate
 
 class Config(object):
   def __init__(self, aAppName, aPlatformConfigurations=None):
@@ -32,7 +51,8 @@ class Config(object):
   def __processPlatformConfigurations(self, aRawPlatformDict):
     platConfigs = dict()
     for key in aRawPlatformDict.keys():
-      platConfigs[key] = PlatformConfiguration(aRawPlatformDict[key]['processName'], aRawPlatformDict[key]['firstBinaryDate'])
+      binaryRepo = BinaryRepository(aRawPlatformDict[key]['binaryRepository'])
+      platConfigs[key] = PlatformConfiguration(aRawPlatformDict[key]['processName'], aRawPlatformDict[key]['firstBinaryDate'], binaryRepo)
 
     return platConfigs
 

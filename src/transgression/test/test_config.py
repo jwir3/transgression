@@ -13,7 +13,9 @@ class ConfigTest(unittest.TestCase):
     configObj = json.loads(self.mJsonString, object_hook=config.config_decoder)
     self.assertEquals('Jingit', configObj.getAppName())
     self.assertEquals('air.com.jingit.mobile', configObj.getPlatformConfiguration('android').getProcessName())
-    self.assertEquals('2009', configObj.getFirstBinaryDate().getYear())
+    self.assertEquals(2009, configObj.getPlatformConfiguration('android').getFirstBinaryDate().year)
+    self.assertEquals('sftp', configObj.getPlatformConfiguration('android').getBinaryRepository().getProtocol())
+    self.assertEquals('jenkinsmonkey.local/APKS/%year%-%month%-%day%/%time%/%commitid%/%appname%-debug-%buildnumber%.apk', configObj.getPlatformConfiguration('android').getBinaryRepository().getLocationFormatString())
 
 if __name__ == '__main__':
   unittest.main()
