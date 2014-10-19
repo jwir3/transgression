@@ -20,6 +20,7 @@
 #
 # Contributor(s):
 #  Clint Talbert <ctalbert@mozilla.com>
+#  Scott Johnson <jaywir3@gmail.com>
 #
 # Alternatively, the contents of this file may be used under the terms of
 # either the GNU General Public License Version 2 or later (the "GPL"), or
@@ -45,14 +46,15 @@ import os
 import shutil
 import zipfile
 
-from mozfile import rmtree
+# from mozfile import rmtree
 
 isDMG = re.compile(".*\.dmg")
 isTARBZ = re.compile(".*\.tar\.bz")
 isTARGZ = re.compile(".*\.tar\.gz")
 isZIP = re.compile(".*\.zip")
 isEXE = re.compile(".*\.exe")
-_mozInstall_debug = False
+_mozInstall_debug = True
+DEFAULT_APP_NAME = "Minefield.app"
 
 def debug(s):
   if _mozInstall_debug:
@@ -71,75 +73,76 @@ def getPlatform():
   else:
     return platform.system()
 
-class MozUninstaller:
+class AppUninstaller:
   def __init__(self, **kwargs):
     debug("uninstall constructor")
     assert (kwargs['dest'] != "" and kwargs['dest'] != None)
     assert (kwargs['productName'] != "" and kwargs['productName'] != None)
-    assert (kwargs['branch'] != "" and kwargs['dest'] != None)
     self.dest = kwargs['dest']
     self.productName = kwargs['productName']
-    self.branch = kwargs['branch']
 
     # Handle the case where we haven't installed yet
     if not os.path.exists(self.dest):
+      print("Error: " + self.productName + " does not appear to be installed.")
       return
 
-    if getPlatform() == "Windows":
-      try:
-        self.doWindowsUninstall()
-      except:
-        debug("Windows Uninstall threw - not overly urgent or worrisome")
+    # if getPlatform() == "Windows":
+    #   try:
+    #     self.doWindowsUninstall()
+    #   except:
+    #     debug("Windows Uninstall threw - not overly urgent or worrisome")
     if os.path.exists(self.dest):
       try:
         os.rmdir(self.dest)
       except OSError:
         # Directories are still there - kill them all!
-        rmtree(self.dest)
+        shutil.rmtree(self.dest)
 
-  def doWindowsUninstall(self):
-    debug("do windowsUninstall")
-    if self.branch == "1.8.0":
-      uninstexe = self.dest + "/uninstall/uninstall.exe"
-      uninstini = self.dest + "/uninstall/uninstall.ini"
-      debug("uninstexe: " + uninstexe)
-      debug("uninstini: " + uninstini)
-      if os.path.exists(uninstexe):
-        # modify uninstall.ini to run silently
-        debug("modifying uninstall.ini")
-        args = "sed -i.bak 's/Run Mode=Normal/Run Mode=Silent/' " + uninstini
-        proc = subprocess.Popen(args, shell=True)
-        # Todo handle error
-        proc.wait()
-        proc = subprocess.Popen(uninstexe, shell=True)
-        proc.wait()
-    elif self.branch == "1.8.1" or self.branch == "1.8" or self.branch == "1.9":
-      debug("we are in 1.8 uninstall land")
-      uninst = self.dest + "/uninstall/uninst.exe"
-      helper = self.dest + "/uninstall/helper.exe"
-      debug("uninst: " + uninst)
-      debug("helper: " + helper)
+    debug (self.productName + " uninstalled successfully!")
 
-      if os.path.exists(helper):
-        debug("helper exists")
-        args = helper + " /S /D=" + os.path.normpath(self.dest)
-        debug("running helper with args: " + args)
-        proc = subprocess.Popen(args, shell=True)
-        proc.wait()
-      elif os.path.exists(uninst):
-        args = uninst + " /S /D=" + os.path.normpath(self.dest)
-        debug("running uninst with args: " + args)
-        proc = subprocess.Popen(args, shell=True)
-        proc.wait()
-      else:
-        uninst = self.dest + "/" + self.product + "/uninstall/uninstaller.exe"
-        args = uninst + " /S /D=" + os.path.normpath(self.dest)
-        debug("running uninstaller with args: " + args)
-        proc = subprocess.Popen(args, shell=True)
-        proc.wait()
-    time.sleep(10)
+  # def doWindowsUninstall(self):
+  #   debug("do windowsUninstall")
+  #   if self.branch == "1.8.0":
+  #     uninstexe = self.dest + "/uninstall/uninstall.exe"
+  #     uninstini = self.dest + "/uninstall/uninstall.ini"
+  #     debug("uninstexe: " + uninstexe)
+  #     debug("uninstini: " + uninstini)
+  #     if os.path.exists(uninstexe):
+  #       # modify uninstall.ini to run silently
+  #       debug("modifying uninstall.ini")
+  #       args = "sed -i.bak 's/Run Mode=Normal/Run Mode=Silent/' " + uninstini
+  #       proc = subprocess.Popen(args, shell=True)
+  #       # Todo handle error
+  #       proc.wait()
+  #       proc = subprocess.Popen(uninstexe, shell=True)
+  #       proc.wait()
+  #   elif self.branch == "1.8.1" or self.branch == "1.8" or self.branch == "1.9":
+  #     debug("we are in 1.8 uninstall land")
+  #     uninst = self.dest + "/uninstall/uninst.exe"
+  #     helper = self.dest + "/uninstall/helper.exe"
+  #     debug("uninst: " + uninst)
+  #     debug("helper: " + helper)
+  #
+  #     if os.path.exists(helper):
+  #       debug("helper exists")
+  #       args = helper + " /S /D=" + os.path.normpath(self.dest)
+  #       debug("running helper with args: " + args)
+  #       proc = subprocess.Popen(args, shell=True)
+  #       proc.wait()
+  #     elif os.path.exists(uninst):
+  #       args = uninst + " /S /D=" + os.path.normpath(self.dest)
+  #       debug("running uninst with args: " + args)
+  #       proc = subprocess.Popen(args, shell=True)
+  #       proc.wait()
+  #     else:
+  #       uninst = self.dest + "/" + self.product + "/uninstall/uninstaller.exe"
+  #       args = uninst + " /S /D=" + os.path.normpath(self.dest)
+  #       debug("running uninstaller with args: " + args)
+  #       proc = subprocess.Popen(args, shell=True)
+  #       proc.wait()
+  #   time.sleep(10)
 
-class MozInstaller:
+class AppInstaller:
   def __init__(self, **kwargs):
     debug("install constructor!")
     assert (kwargs['dest'] != "" and kwargs['dest'] != None)
@@ -148,23 +151,26 @@ class MozInstaller:
     #assert (kwargs['branch'] != "" and kwargs['branch'] != None)
     self.src = kwargs['src']
     self.dest = kwargs['dest']
-    self.dest_app = kwargs['dest_app']
+    self.product = kwargs['product']
     #self.productName = kwargs['productName']
     #self.branch = kwargs['branch']
     #debug("running uninstall")
-    #uninstaller = MozUninstaller(dest = self.dest, productName = self.productName,
+    #uninstaller = AppUninstaller(dest = self.dest, productName = self.productName,
      #                            branch = self.branch)
 
+
     if isDMG.match(self.src):
-      self.installDmg(self.dest_app)
-    elif isTARBZ.match(self.src):
-      self.installTarBz()
-    elif isTARGZ.match(self.src):
-      self.installTarGz()
-    elif isZIP.match(self.src):
-      self.installZip()
-    elif isEXE.match(self.src):
-      self.installExe()
+      self.installDmg(self.product)
+    # elif isTARBZ.match(self.src):
+    #   self.installTarBz()
+    # elif isTARGZ.match(self.src):
+    #   self.installTarGz()
+    # elif isZIP.match(self.src):
+    #   self.installZip()
+    # elif isEXE.match(self.src):
+    #   self.installExe()
+
+    debug(self.product + " was installed successfully.")
 
   # Simple utility function to get around python's path module's inability
   # to understand ~/... style paths
@@ -182,7 +188,8 @@ class MozInstaller:
       print "Error creating destination directory " + path
     return path
 
-  def installDmg(self, dest_app):
+  def installDmg(self, aProduct):
+    global DEFAULT_APP_NAME
     # Ensure our destination directory exists
     self.dest = self.normalizePath(self.dest)
 
@@ -191,7 +198,7 @@ class MozInstaller:
     devnull = open(os.devnull, "w")
     subprocess.check_call(["hdiutil", "attach", "-quiet", "-mountpoint", mountpoint, self.src], stdout=devnull)
 
-    app = 'Minefield.app'
+    app = DEFAULT_APP_NAME
     for fname in os.listdir(mountpoint):
       if fname.find(".app") != -1:
         app = fname
@@ -200,7 +207,7 @@ class MozInstaller:
       #while not os.path.exists(mountpoint + "/MinefieldDebug.app"):
       #  print "waiting for disk image"
       #  time.sleep(1)
-      shutil.copytree(os.path.join(mountpoint, app), os.path.join(self.dest, dest_app or app))
+      shutil.copytree(os.path.join(mountpoint, app), os.path.join(self.dest, self.product))
     finally:
       subprocess.check_call(["hdiutil", "detach", mountpoint], stdout=devnull)
       #shutil.rmtree(mountpoint)
@@ -231,7 +238,7 @@ class MozInstaller:
         args = ["unzip", "-o", "-q", "-d", self.dest, self.src]
         proc = subprocess.Popen(args)
         proc.wait()
-        
+
   def installExe(self):
     debug("running installEXE")
     args = self.src + " "
@@ -248,33 +255,30 @@ class MozInstaller:
 # Enable it to be called from the command line with the options
 if __name__ == "__main__":
   parser = OptionParser()
-  parser.add_option("-s", "--Source", dest="src",
+  parser.add_option("-s", "--source", dest="src",
                    help="Installation Source File (whatever was downloaded) -\
                          accepts Zip, Exe, Tar.Bz, Tar.Gz, and DMG",
                    metavar="SRC_FILE")
-  parser.add_option("-d", "--Destination", dest="dest",
-                    help="Directory to install the build into", metavar="DEST")
-  parser.add_option("-b", "--Branch", dest="branch",
-                    help="Branch the build is from must be one of: 1.8.0|1.8|\
-                          1.9", metavar="BRANCH")
-  parser.add_option("-p", "--Product", dest="product",
-                    help="Product name - optional should be all lowercase if\
-                         specified: firefox, fennec, thunderbird, etc",
+  parser.add_option("-d", "--destination", dest="dest",
+                    help="Directory to install the application into", metavar="DEST")
+  # parser.add_option("-b", "--Branch", dest="branch",
+  #                   help="Branch the build is from must be one of: 1.8.0|1.8|\
+  #                         1.9", metavar="BRANCH")
+  parser.add_option("-p", "--product", dest="product",
+                    help="Specify the product name (used for product identification purposes only)",
                     metavar="PRODUCT")
-  parser.add_option("-o", "--Operation", dest="op",
+  parser.add_option("-o", "--operation", dest="op",
                     help="The operation you would like the script to perform.\
                          Should be either install (i) or uninstall (u) or delete\
                           (d) to recursively delete the directory specified in dest",
-                    metavar="OP")
+                    metavar="OP", default="i")
 
   (options, args) = parser.parse_args()
 
   # Run it
   if string.upper(options.op) == "INSTALL" or string.upper(options.op) == "I":
-    installer = MozInstaller(src = options.src, dest = options.dest,
-                             branch = options.branch, productName = options.product)
+    installer = AppInstaller(src = options.src, dest = options.dest, product = options.product)
   elif string.upper(options.op) == "UNINSTALL" or string.upper(options.op) == "U":
-    uninstaller = MozUninstaller(dest = options.dest, branch = options.branch,
-                                 productName = options.product)
-  elif string.upper(options.op) == "DELETE" or string.upper(options.op) == "D":
-    rmtree(options.dest)
+    uninstaller = AppUninstaller(dest = options.dest, productName = options.product)
+  # elif string.upper(options.op) == "DELETE" or string.upper(options.op) == "D":
+  #   rmtree(options.dest)
