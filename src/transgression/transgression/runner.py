@@ -13,14 +13,14 @@ import subprocess
 import sys
 
 from mozfile import rmtree
-from mozprofile import FirefoxProfile
-from mozprofile import ThunderbirdProfile
-from mozrunner import Runner
+# from mozprofile import FirefoxProfile
+# from mozprofile import ThunderbirdProfile
+# from mozrunner import Runner
 from optparse import OptionParser
 from ConfigParser import ConfigParser
 from BeautifulSoup import BeautifulSoup
 
-from mozInstall import MozInstaller
+from appinstaller import AppInstaller
 from utils import strsplit, download_url, get_date, get_platform
 
 class DebugBuild(object):

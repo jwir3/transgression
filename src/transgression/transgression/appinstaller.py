@@ -53,11 +53,12 @@ isTARBZ = re.compile(".*\.tar\.bz")
 isTARGZ = re.compile(".*\.tar\.gz")
 isZIP = re.compile(".*\.zip")
 isEXE = re.compile(".*\.exe")
-_mozInstall_debug = True
+gDebugEnabled = True
 DEFAULT_APP_NAME = "Minefield.app"
 
 def debug(s):
-  if _mozInstall_debug:
+  global gDebugEnabled
+  if gDebugEnabled:
     print "DEBUG: " + s
 
 cygwinmatch = re.compile(".*cygwin.*", re.I)
