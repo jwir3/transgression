@@ -130,8 +130,11 @@ class Config(object):
     self.__writeConfigToFile()
 
   def __writeConfigToFile(self):
-    jsonString = json.dumps(self, cls=config.ConfigEncoder, indent=2)
-    fp = open(os.path.join(os.path.expanduser('~/.transgression'), 'config.json'), "w")
+    jsonString = json.dumps(self, cls=ConfigEncoder, indent=2)
+    transDir = os.path.expanduser('~/.transgression')
+    if not os.path.exists(transDir):
+        os.mkdir(transDir)
+    fp = open(os.path.join(transDir, 'config.json'), "w")
     fp.write(jsonString)
     fp.close()
 
