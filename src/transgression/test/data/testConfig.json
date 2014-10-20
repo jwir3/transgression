@@ -1,0 +1,17 @@
+{
+  "__type__": "transgression-configuration",
+  "applications" : {
+    "Jingit": {
+      "platformConfigurations" : {
+        "android" : {
+          "firstBinaryDate" : "2009-01-01",
+          "processName" : "air.com.jingit.mobile",
+          "binaryRepository" : {
+            "protocol" : "sftp",
+            "location" : "jenkinsmonkey.local/APKS/%year%-%month%-%day%/%time%/%commitid%/%appname%-debug-%buildnumber%.apk"
+          }
+        }
+      }
+    }
+  }
+}

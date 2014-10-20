@@ -1,11 +1,11 @@
-#class Transgression:
-from configurator.core import Configurator
 import os.path
 import paramiko
 from time import sleep
 import getpass
 from prettylogger.core import PrettyLogger
 from ui import showMenu
+import json
+import config
 
 gLogger = None
 gBinTypeSelected = None
@@ -158,6 +158,10 @@ def getListOfBinaries(aConfigurator):
 def setupRegressionTest(aProgramConfig):
   print("About to regression test " + aProgramConfig.getName())
 
+def loadConfigFromJsonFile(aPath):
+  configString = open(aPath, 'r').read()
+  return json.loads(configString, object_hook=config.config_decoder)
+
 def main():
   global gLogger
 
@@ -168,43 +172,43 @@ def main():
   gLogger = PrettyLogger(True, DEBUG, VERBOSE)
 
   try:
-    # Check to make sure we have a config file, or create one
-    config = Configurator(os.path.join('.transgression', 'config.xml'), aDebugOutput=DEBUG)
+    # Check to make sure we have a config file
+    config = loadConfigFromJsonFile(os.path.join(os.path.expanduser('~/.transgression'), 'config.json'))
 
     # Configuration should include at least one binary
-    try:
-      gLogger.debug("About to try and retrieve binaries section...")
-      section = config.getSectionByPath('Binaries')
-      gLogger.debug("Section found: " + str(section))
-      binaries = getListOfBinaries(config)
-      print("Binaries: " + str(binaries))
-      allPrograms = []
-      programChoice = None
-      for program in binaries:
-        programListItem = (program.getName(), program)
-        allPrograms.append(programListItem)
-      allPrograms.append(('Create New Binary', None))
+    # try:
+    gLogger.debug("About to try and retrieve applications...")
+    applications = config.getAllApplications()
+    allPrograms = []
+    programChoice = None
+    for programKey in applications.keys():
+      program = applications[programKey]
+      programListItem = (program.getAppName(), program)
+      allPrograms.append(programListItem)
+      # TODO: We don't currently support the ability to add new binaries
+      #       except via the config file.
+      # allPrograms.append(('Create New Binary', None))
       programChoice = showMenu(allPrograms)
-      if not programChoice:
-        gLogger.debug("Program choice was None")
-        programConfig = getInputForNewProgram()
-        if programConfig:
-          programConfig.writeToConfig(config)
-          programChoice = programConfig
-    except Exception as e:
-      gLogger.debug("Exception occurred: " + str(e))
+      # if not programChoice:
+      #   gLogger.debug("Program choice was None")
+      #   programConfig = getInputForNewProgram()
+      #   if programConfig:
+      #     config.addApplication(programConfig)
+          # programConfig.writeToConfig(config)
+          # programChoice = programConfig
+    # except Exception as e:
+      # gLogger.debug("Exception occurred: " + str(e))
 
       # We don't have any binaries listed, so perhaps we should prompt the user
       # for one?
 
-      programConfig = promptUserForProgram()
-
-      if programConfig:
-        programConfig.writeToConfig(config)
-        programChoice = programConfig
+      # programConfig = promptUserForProgram()
+      # if programConfig:
+        # programConfig.writeToConfig(config)
+        # programChoice = programConfig
 
     # We can now use programChoice as the one to regression test
-    setupRegressionTest(programChoice)
+    # setupRegressionTest(programChoice)
   except KeyboardInterrupt:
     # We just want to exit normally in this circumstance.
     print("")
