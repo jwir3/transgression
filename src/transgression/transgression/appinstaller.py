@@ -161,14 +161,14 @@ class AppInstaller:
 
     if isDMG.match(self.src):
       self.installDmg(self.product)
-    # elif isTARBZ.match(self.src):
-    #   self.installTarBz()
-    # elif isTARGZ.match(self.src):
-    #   self.installTarGz()
-    # elif isZIP.match(self.src):
-    #   self.installZip()
-    # elif isEXE.match(self.src):
-    #   self.installExe()
+    elif isTARBZ.match(self.src):
+      self.installTarBz()
+    elif isTARGZ.match(self.src):
+      self.installTarGz()
+    elif isZIP.match(self.src):
+      self.installZip()
+    elif isEXE.match(self.src):
+      self.installExe()
 
     debug(self.product + " was installed successfully.")
 
@@ -207,8 +207,12 @@ class AppInstaller:
       #while not os.path.exists(mountpoint + "/MinefieldDebug.app"):
       #  print "waiting for disk image"
       #  time.sleep(1)
+      debug("mountpoint: " + str(mountpoint))
+      debug("app: " + str(app))
       shutil.copytree(os.path.join(mountpoint, app), os.path.join(self.dest, self.product))
     finally:
+      # TODO: Sometimes this doesn't get called, because we encounter an exception
+      #       up above?
       subprocess.check_call(["hdiutil", "detach", mountpoint], stdout=devnull)
       #shutil.rmtree(mountpoint)
 
@@ -242,17 +246,17 @@ class AppInstaller:
   def installExe(self):
     debug("running installEXE")
     args = self.src + " "
-    if self.branch == "1.8.0":
-      args += "-ms -hideBanner -dd " + self.dest
-    else:
-      debug("running install exe for 1.8.1")
-      args += "/S /D=" + os.path.normpath(self.dest)
+    # if self.branch == "1.8.0":
+    #   args += "-ms -hideBanner -dd " + self.dest
+    # else:
+    #   debug("running install exe for 1.8.1")
+    args += "/S /D=" + os.path.normpath(self.dest)
     # Do we need a shell=True here?
     proc = subprocess.Popen(args)
     proc.wait()
     # TODO: throw stderr
 
-# Enable it to be called from the command line with the options
+# Enable it to be called from the command line with the options for testing
 if __name__ == "__main__":
   parser = OptionParser()
   parser.add_option("-s", "--source", dest="src",
@@ -261,9 +265,6 @@ if __name__ == "__main__":
                    metavar="SRC_FILE")
   parser.add_option("-d", "--destination", dest="dest",
                     help="Directory to install the application into", metavar="DEST")
-  # parser.add_option("-b", "--Branch", dest="branch",
-  #                   help="Branch the build is from must be one of: 1.8.0|1.8|\
-  #                         1.9", metavar="BRANCH")
   parser.add_option("-p", "--product", dest="product",
                     help="Specify the product name (used for product identification purposes only)",
                     metavar="PRODUCT")
