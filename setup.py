@@ -12,5 +12,5 @@ setup(name='transgression',
         'transgression = transgression.core:main'] },
       install_requires=['argparse', 'ansicolors', 'httplib2', 'mozfile',
                         'mozprofile', 'mozrunner', 'BeautifulSoup', 'paramiko',
-                        'configurator', 'prettylogger']
+                        'prettylogger']
 )
