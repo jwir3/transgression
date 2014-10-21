@@ -1,0 +1,17 @@
+{
+  "__type__": "transgression-configuration",
+  "applications" : {
+    "FirefoxMac": {
+      "platformConfigurations" : {
+        "osx" : {
+          "firstBinaryDate" : "2013-01-01",
+          "processName" : "Firefox",
+          "binaryRepository" : {
+            "protocol" : "ftp",
+            "location" : "ftp.mozilla.org/pub/firefox/%Y/%m/%Y-%m-%d-mozilla-central-debug/*.dmg"
+          }
+        }
+      }
+    }
+  }
+}

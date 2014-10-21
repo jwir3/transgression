@@ -1,6 +1,7 @@
 import json
 import datetime
 import os
+from ftplib import FTP
 
 class BinaryRepositoryEncoder(json.JSONEncoder):
 
@@ -15,12 +16,26 @@ class BinaryRepository(object):
   def initialize(self, aProtocol, aLocationString):
     self.mLocationString = aLocationString
     self.mProtocol = aProtocol
+    if self.mProtocol == 'ftp':
+        self.mProtocolObject = FTP(self.getHost())
+        self.mProtocolObject.login()
 
   def getProtocol(self):
     return self.mProtocol
 
-  def getLocationFormatString(self):
-    return self.mLocationString
+  def getHost(self):
+      return self.mLocationString.split("/")[0]
+
+  def getRawDirectory(self):
+      return "/".join(self.mLocationString.split("/")[1:])
+
+  def getFormattedDirectory(self, aYear=2001, aMonth=1, aDay=1):
+      retVal = self.getRawDirectory()
+      date = datetime.datetime(year=aYear, month=aMonth, day=aDay)
+      return date.strftime(self.getRawDirectory())
+
+  # def getLocationFormatString(self):
+  #   return self.mLocationString
 
 class PlatformConfigurationEncoder(json.JSONEncoder):
   @staticmethod

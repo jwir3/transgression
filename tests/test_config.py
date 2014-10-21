@@ -16,7 +16,6 @@ class ConfigTest(unittest.TestCase):
     self.assertEquals('air.com.jingit.mobile', configObj.getApplication('Jingit').getPlatformConfiguration('android').getProcessName())
     self.assertEquals(2009, configObj.getApplication('Jingit').getPlatformConfiguration('android').getFirstBinaryDate().year)
     self.assertEquals('sftp', configObj.getApplication('Jingit').getPlatformConfiguration('android').getBinaryRepository().getProtocol())
-    self.assertEquals('jenkinsmonkey.local/APKS/%year%-%month%-%day%/%time%/%commitid%/%appname%-debug-%buildnumber%.apk', configObj.getApplication('Jingit').getPlatformConfiguration('android').getBinaryRepository().getLocationFormatString())
 
   def test_configuration_add_application(self):
     configObj = json.loads(self.mJsonString, object_hook=config_decoder)
@@ -27,7 +26,6 @@ class ConfigTest(unittest.TestCase):
     self.assertEquals('Jingit-bin', configObj.getApplication('testApp').getPlatformConfiguration('windows').getProcessName())
     self.assertEquals(2010, configObj.getApplication('testApp').getPlatformConfiguration('windows').getFirstBinaryDate().year)
     self.assertEquals('sftp', configObj.getApplication('testApp').getPlatformConfiguration('windows').getBinaryRepository().getProtocol())
-    self.assertEquals('www.google.com', configObj.getApplication('testApp').getPlatformConfiguration('windows').getBinaryRepository().getLocationFormatString())
 
   # def test_add_application(self):
   #   configObj = json.loads(self.mJsonString, object_hook=config_decoder)
@@ -57,5 +55,15 @@ class ConfigTest(unittest.TestCase):
     self.assertEquals(expectedConfigOutput, ConfigEncoder.encode(configObj))
     self.assertEquals(expectedConfigOutput, json.dumps(configObj, cls=ConfigEncoder, indent=2))
 
+  def test_config_mozilla(self):
+      mozJsonString = open(os.path.abspath(os.path.dirname(os.path.realpath(__file__))+"/data/testConfigMozillaMac.json"), 'r').read()
+      configObj = json.loads(mozJsonString, object_hook=config_decoder)
+      app = configObj.getApplication("FirefoxMac")
+      platConfig = app.getPlatformConfiguration('osx')
+      binRepo = platConfig.getBinaryRepository()
+
+      self.assertEquals("ftp.mozilla.org", binRepo.getHost())
+      self.assertEquals("pub/firefox/2013/08/2013-08-14-mozilla-central-debug/*.dmg", binRepo.getFormattedDirectory(2013, 8, 14))
+      
 if __name__ == '__main__':
   unittest.main()
